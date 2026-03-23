@@ -522,91 +522,146 @@
     const vetCards = $('vetCards');
     const loading = $('loading');
 
-    // ─── Particle Orb ────────────────────────────────────
+    // ─── Particle Dog ──────────────────────────────────────
     const canvas = $('orbCanvas');
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
     const CX = W / 2, CY = H / 2;
-    const PARTICLE_COUNT = 90;
     let orbMode = 'idle'; // 'idle' | 'listening' | 'speaking'
+    let orbTime = 0;
+    let morphProgress = 0; // 0 = orb, 1 = dog shape
+
+    // Dog silhouette points (normalized -1 to 1, will be scaled)
+    // Simple sitting dog profile: head, ears, body, legs, tail
+    const dogPoints = [
+      // Head (circle-ish cluster)
+      {x: 0.05, y: -0.55}, {x: 0.15, y: -0.6}, {x: -0.05, y: -0.6},
+      {x: 0.1, y: -0.5}, {x: -0.02, y: -0.5}, {x: 0.18, y: -0.52},
+      {x: 0.08, y: -0.65}, {x: -0.02, y: -0.58}, {x: 0.12, y: -0.58},
+      // Nose
+      {x: 0.22, y: -0.53}, {x: 0.25, y: -0.51},
+      // Left ear
+      {x: -0.08, y: -0.72}, {x: -0.12, y: -0.8}, {x: -0.06, y: -0.82},
+      {x: -0.02, y: -0.76}, {x: -0.1, y: -0.76},
+      // Right ear
+      {x: 0.12, y: -0.72}, {x: 0.16, y: -0.8}, {x: 0.1, y: -0.82},
+      {x: 0.08, y: -0.76}, {x: 0.14, y: -0.76},
+      // Eye
+      {x: 0.1, y: -0.56}, {x: 0.02, y: -0.56},
+      // Neck
+      {x: 0.05, y: -0.42}, {x: -0.02, y: -0.4}, {x: 0.12, y: -0.44},
+      // Chest
+      {x: 0.15, y: -0.3}, {x: 0.18, y: -0.2}, {x: 0.16, y: -0.1},
+      {x: 0.2, y: -0.25}, {x: 0.14, y: -0.35},
+      // Back
+      {x: -0.05, y: -0.38}, {x: -0.12, y: -0.3}, {x: -0.18, y: -0.2},
+      {x: -0.22, y: -0.1}, {x: -0.24, y: 0.0}, {x: -0.22, y: 0.1},
+      // Body fill
+      {x: 0.0, y: -0.2}, {x: -0.08, y: -0.1}, {x: 0.05, y: -0.1},
+      {x: -0.1, y: 0.0}, {x: 0.08, y: 0.0}, {x: -0.05, y: 0.1},
+      // Belly
+      {x: 0.12, y: 0.0}, {x: 0.14, y: 0.1}, {x: 0.1, y: 0.15},
+      // Front legs
+      {x: 0.14, y: 0.2}, {x: 0.16, y: 0.3}, {x: 0.15, y: 0.4},
+      {x: 0.14, y: 0.48}, {x: 0.16, y: 0.48},
+      {x: 0.08, y: 0.2}, {x: 0.06, y: 0.3}, {x: 0.07, y: 0.4},
+      {x: 0.06, y: 0.48}, {x: 0.08, y: 0.48},
+      // Back legs
+      {x: -0.18, y: 0.15}, {x: -0.2, y: 0.25}, {x: -0.18, y: 0.35},
+      {x: -0.16, y: 0.45}, {x: -0.18, y: 0.48},
+      {x: -0.1, y: 0.2}, {x: -0.08, y: 0.3}, {x: -0.1, y: 0.4},
+      {x: -0.08, y: 0.48}, {x: -0.1, y: 0.48},
+      // Tail (curled up)
+      {x: -0.26, y: -0.05}, {x: -0.3, y: -0.12}, {x: -0.32, y: -0.2},
+      {x: -0.3, y: -0.28}, {x: -0.26, y: -0.32},
+      // Paws (little dots at feet)
+      {x: 0.13, y: 0.5}, {x: 0.17, y: 0.5}, {x: 0.05, y: 0.5}, {x: 0.09, y: 0.5},
+      {x: -0.15, y: 0.5}, {x: -0.19, y: 0.5}, {x: -0.07, y: 0.5}, {x: -0.11, y: 0.5},
+      // Extra body fill
+      {x: 0.02, y: 0.05}, {x: -0.02, y: -0.05}, {x: -0.15, y: 0.05},
+      {x: 0.0, y: 0.15}, {x: -0.06, y: 0.15},
+    ];
+
+    const PARTICLE_COUNT = dogPoints.length;
+    const DOG_SCALE = 150;
 
     const particles = [];
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
+      const dist = 30 + Math.random() * 40;
       particles.push({
-        angle,
-        phi,
-        baseR: 40 + Math.random() * 15,
-        speed: 0.2 + Math.random() * 0.5,
-        phiSpeed: 0.1 + Math.random() * 0.3,
-        size: 1.5 + Math.random() * 2,
-        opacity: 0.3 + Math.random() * 0.7,
+        // Current position
+        x: CX + Math.cos(angle) * dist,
+        y: CY + Math.sin(angle) * dist,
+        // Orb position (for idle/listening)
+        orbAngle: angle,
+        orbSpeed: 0.3 + Math.random() * 0.6,
+        orbR: 35 + Math.random() * 20,
+        orbPhase: Math.random() * Math.PI * 2,
+        // Dog target position
+        dogX: CX + dogPoints[i].x * DOG_SCALE,
+        dogY: CY + dogPoints[i].y * DOG_SCALE,
+        // Visual
+        size: 2 + Math.random() * 2.5,
+        opacity: 0.4 + Math.random() * 0.6,
         offset: Math.random() * Math.PI * 2
       });
     }
-
-    let orbTime = 0;
-    let currentRadius = 50;
-    let targetRadius = 50;
 
     function drawOrb() {
       orbTime += 0.016;
       ctx.clearRect(0, 0, W, H);
 
-      // Smoothly lerp radius
-      currentRadius += (targetRadius - currentRadius) * 0.06;
+      // Morph progress: smoothly transition
+      const targetMorph = orbMode === 'speaking' ? 1 : 0;
+      morphProgress += (targetMorph - morphProgress) * 0.04;
 
-      // Glow behind the orb
-      const glowColor = orbMode === 'speaking' ? '59, 130, 246' : orbMode === 'listening' ? '99, 160, 255' : '59, 130, 246';
-      const glowSize = orbMode === 'speaking' ? 60 : 40;
-      const gradient = ctx.createRadialGradient(CX, CY, 0, CX, CY, currentRadius + glowSize);
-      gradient.addColorStop(0, `rgba(${glowColor}, 0.12)`);
+      // Orb radius based on mode
+      const orbRadius = orbMode === 'listening' ? 65 : 45;
+
+      // Glow
+      const glowAlpha = orbMode === 'speaking' ? 0.15 : 0.08;
+      const gradient = ctx.createRadialGradient(CX, CY, 0, CX, CY, 120);
+      gradient.addColorStop(0, `rgba(59, 130, 246, ${glowAlpha})`);
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = gradient;
       ctx.beginPath();
-      ctx.arc(CX, CY, currentRadius + glowSize, 0, Math.PI * 2);
+      ctx.arc(CX, CY, 120, 0, Math.PI * 2);
       ctx.fill();
 
-      // Draw particles
       for (const p of particles) {
-        p.angle += p.speed * 0.016;
-        p.phi += p.phiSpeed * 0.008;
+        // Calculate orb position (circular floating)
+        p.orbAngle += p.orbSpeed * 0.012;
+        const breathe = Math.sin(orbTime * 0.8 + p.orbPhase) * 10;
+        const drift = orbMode === 'listening' ? Math.sin(orbTime * 1.5 + p.orbPhase * 2) * 5 : 0;
+        const oX = CX + Math.cos(p.orbAngle) * (orbRadius + breathe) + drift;
+        const oY = CY + Math.sin(p.orbAngle) * (orbRadius + breathe) * 0.85 + drift;
 
-        let r = currentRadius;
-        let jitter = 0;
+        // Calculate dog position (with subtle animation)
+        const dogWiggle = orbMode === 'speaking' ? Math.sin(orbTime * 3 + p.offset) * 2.5 : 0;
+        const dogBreath = Math.sin(orbTime * 1.5 + p.offset * 0.5) * 1.5;
+        const dX = p.dogX + dogWiggle;
+        const dY = p.dogY + dogBreath;
 
-        if (orbMode === 'idle') {
-          // Gentle breathing
-          r += Math.sin(orbTime * 0.8 + p.offset) * 8;
-        } else if (orbMode === 'listening') {
-          // Expanded, slow drift
-          r += Math.sin(orbTime * 1.2 + p.offset) * 12;
-          jitter = Math.sin(orbTime * 2 + p.offset * 3) * 3;
-        } else if (orbMode === 'speaking') {
-          // Tight, energetic, pulsing
-          r += Math.sin(orbTime * 4 + p.offset) * 6;
-          jitter = Math.sin(orbTime * 6 + p.offset * 5) * 4;
-        }
+        // Interpolate between orb and dog
+        p.x += ((oX * (1 - morphProgress) + dX * morphProgress) - p.x) * 0.08;
+        p.y += ((oY * (1 - morphProgress) + dY * morphProgress) - p.y) * 0.08;
 
-        const x = CX + (r + jitter) * Math.sin(p.phi) * Math.cos(p.angle);
-        const y = CY + (r + jitter) * Math.sin(p.phi) * Math.sin(p.angle) * 0.85;
+        // Alpha
+        const pulse = orbMode === 'speaking'
+          ? 0.7 + 0.3 * Math.sin(orbTime * 4 + p.offset)
+          : 0.5 + 0.3 * Math.sin(orbTime * 1.2 + p.offset);
+        const alpha = p.opacity * pulse;
 
-        const alpha = orbMode === 'speaking'
-          ? p.opacity * (0.7 + 0.3 * Math.sin(orbTime * 5 + p.offset))
-          : p.opacity * (0.5 + 0.3 * Math.sin(orbTime * 1.5 + p.offset));
+        // Color shifts slightly when speaking
+        const blue = orbMode === 'speaking' ? 240 : 220;
+        const green = orbMode === 'speaking' ? 190 : 180;
 
         ctx.beginPath();
-        ctx.arc(x, y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(120, 180, 255, ${alpha})`;
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(120, ${green}, ${blue}, ${alpha})`;
         ctx.fill();
       }
-
-      // Center dot (subtle)
-      ctx.beginPath();
-      ctx.arc(CX, CY, 3, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(59, 130, 246, ${0.2 + 0.1 * Math.sin(orbTime * 2)})`;
-      ctx.fill();
 
       requestAnimationFrame(drawOrb);
     }
@@ -615,9 +670,6 @@
 
     function setOrbMode(mode) {
       orbMode = mode;
-      if (mode === 'idle') targetRadius = 50;
-      else if (mode === 'listening') targetRadius = 70;
-      else if (mode === 'speaking') targetRadius = 38;
     }
 
     // ─── UI Updates ───────────────────────────────────────
