@@ -72,43 +72,19 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 32px 0 24px;
+      padding: 24px 0 16px;
     }
 
-    .waveform {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      height: 48px;
+    .orb-container {
+      width: 180px;
+      height: 180px;
       margin-bottom: 16px;
+      position: relative;
     }
 
-    .waveform .bar {
-      width: 4px;
+    .orb-container canvas {
+      width: 100%;
       height: 100%;
-      background: var(--accent-blue);
-      border-radius: 4px;
-      transform: scaleY(0.15);
-      transition: transform 0.15s ease;
-    }
-
-    .waveform.active .bar {
-      animation: wave 0.8s ease-in-out infinite;
-    }
-
-    .waveform .bar:nth-child(1) { animation-delay: 0s; }
-    .waveform .bar:nth-child(2) { animation-delay: 0.1s; }
-    .waveform .bar:nth-child(3) { animation-delay: 0.2s; }
-    .waveform .bar:nth-child(4) { animation-delay: 0.3s; }
-    .waveform .bar:nth-child(5) { animation-delay: 0.4s; }
-    .waveform .bar:nth-child(6) { animation-delay: 0.3s; }
-    .waveform .bar:nth-child(7) { animation-delay: 0.2s; }
-    .waveform .bar:nth-child(8) { animation-delay: 0.1s; }
-    .waveform .bar:nth-child(9) { animation-delay: 0s; }
-
-    @keyframes wave {
-      0%, 100% { transform: scaleY(0.15); }
-      50% { transform: scaleY(1); }
     }
 
     .status-text {
@@ -468,10 +444,8 @@
 
     <!-- Voice Visualizer -->
     <div class="voice-section">
-      <div class="waveform" id="waveform">
-        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="orb-container">
+        <canvas id="orbCanvas" width="360" height="360"></canvas>
       </div>
       <span class="status-text" id="statusText">Tap the mic to start</span>
     </div>
@@ -537,7 +511,6 @@
     // ─── DOM Refs ─────────────────────────────────────────
     const $ = (id) => document.getElementById(id);
     const micBtn = $('micBtn');
-    const waveform = $('waveform');
     const statusText = $('statusText');
     const transcript = $('transcript');
     const severityBadge = $('severityBadge');
@@ -549,6 +522,104 @@
     const vetCards = $('vetCards');
     const loading = $('loading');
 
+    // ─── Particle Orb ────────────────────────────────────
+    const canvas = $('orbCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const CX = W / 2, CY = H / 2;
+    const PARTICLE_COUNT = 90;
+    let orbMode = 'idle'; // 'idle' | 'listening' | 'speaking'
+
+    const particles = [];
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      particles.push({
+        angle,
+        phi,
+        baseR: 40 + Math.random() * 15,
+        speed: 0.2 + Math.random() * 0.5,
+        phiSpeed: 0.1 + Math.random() * 0.3,
+        size: 1.5 + Math.random() * 2,
+        opacity: 0.3 + Math.random() * 0.7,
+        offset: Math.random() * Math.PI * 2
+      });
+    }
+
+    let orbTime = 0;
+    let currentRadius = 50;
+    let targetRadius = 50;
+
+    function drawOrb() {
+      orbTime += 0.016;
+      ctx.clearRect(0, 0, W, H);
+
+      // Smoothly lerp radius
+      currentRadius += (targetRadius - currentRadius) * 0.06;
+
+      // Glow behind the orb
+      const glowColor = orbMode === 'speaking' ? '59, 130, 246' : orbMode === 'listening' ? '99, 160, 255' : '59, 130, 246';
+      const glowSize = orbMode === 'speaking' ? 60 : 40;
+      const gradient = ctx.createRadialGradient(CX, CY, 0, CX, CY, currentRadius + glowSize);
+      gradient.addColorStop(0, `rgba(${glowColor}, 0.12)`);
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(CX, CY, currentRadius + glowSize, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw particles
+      for (const p of particles) {
+        p.angle += p.speed * 0.016;
+        p.phi += p.phiSpeed * 0.008;
+
+        let r = currentRadius;
+        let jitter = 0;
+
+        if (orbMode === 'idle') {
+          // Gentle breathing
+          r += Math.sin(orbTime * 0.8 + p.offset) * 8;
+        } else if (orbMode === 'listening') {
+          // Expanded, slow drift
+          r += Math.sin(orbTime * 1.2 + p.offset) * 12;
+          jitter = Math.sin(orbTime * 2 + p.offset * 3) * 3;
+        } else if (orbMode === 'speaking') {
+          // Tight, energetic, pulsing
+          r += Math.sin(orbTime * 4 + p.offset) * 6;
+          jitter = Math.sin(orbTime * 6 + p.offset * 5) * 4;
+        }
+
+        const x = CX + (r + jitter) * Math.sin(p.phi) * Math.cos(p.angle);
+        const y = CY + (r + jitter) * Math.sin(p.phi) * Math.sin(p.angle) * 0.85;
+
+        const alpha = orbMode === 'speaking'
+          ? p.opacity * (0.7 + 0.3 * Math.sin(orbTime * 5 + p.offset))
+          : p.opacity * (0.5 + 0.3 * Math.sin(orbTime * 1.5 + p.offset));
+
+        ctx.beginPath();
+        ctx.arc(x, y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(120, 180, 255, ${alpha})`;
+        ctx.fill();
+      }
+
+      // Center dot (subtle)
+      ctx.beginPath();
+      ctx.arc(CX, CY, 3, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(59, 130, 246, ${0.2 + 0.1 * Math.sin(orbTime * 2)})`;
+      ctx.fill();
+
+      requestAnimationFrame(drawOrb);
+    }
+
+    drawOrb();
+
+    function setOrbMode(mode) {
+      orbMode = mode;
+      if (mode === 'idle') targetRadius = 50;
+      else if (mode === 'listening') targetRadius = 70;
+      else if (mode === 'speaking') targetRadius = 38;
+    }
+
     // ─── UI Updates ───────────────────────────────────────
     function updateStatus(text, active = false) {
       statusText.textContent = text;
@@ -556,7 +627,7 @@
     }
 
     function setWaveformActive(active) {
-      waveform.classList.toggle('active', active);
+      // Legacy compat — map to orb modes via onModeChange instead
     }
 
     function addMessage(role, text) {
@@ -662,13 +733,13 @@
             state.isActive = true;
             micBtn.classList.add('listening');
             updateStatus('Listening...', true);
-            setWaveformActive(true);
+            setOrbMode('listening');
           },
           onDisconnect: () => {
             state.isActive = false;
             micBtn.classList.remove('listening');
             updateStatus('Session ended');
-            setWaveformActive(false);
+            setOrbMode('idle');
           },
           onMessage: (message) => {
             if (message.source === 'ai') {
@@ -681,10 +752,10 @@
           },
           onModeChange: (mode) => {
             if (mode.mode === 'speaking') {
-              setWaveformActive(true);
+              setOrbMode('speaking');
               updateStatus('Speaking...', true);
             } else if (mode.mode === 'listening') {
-              setWaveformActive(false);
+              setOrbMode('listening');
               updateStatus('Listening...', true);
             }
           },
@@ -693,7 +764,7 @@
             updateStatus('Connection error — tap to retry');
             state.isActive = false;
             micBtn.classList.remove('listening');
-            setWaveformActive(false);
+            setOrbMode('idle');
           }
         });
       } catch (err) {
@@ -731,13 +802,13 @@
           state.isActive = false;
           micBtn.classList.remove('listening');
           updateStatus('Tap the mic to start');
-          setWaveformActive(false);
+          setOrbMode('idle');
           return;
         }
 
         state.isActive = true;
         micBtn.classList.add('listening');
-        setWaveformActive(true);
+        setOrbMode('listening');
         updateStatus('Listening...', true);
 
         // Simulate user message
@@ -749,10 +820,15 @@
 
         // Simulate agent comfort + response
         setTimeout(() => {
-          addMessage('agent', "It's okay, I'm here to help. Take a breath — let me look into this for you right away.");
+          setOrbMode('speaking');
+          addMessage('agent', "It's okay, I'm here to help. Take a breath — let me look into this for you right away. What's your little one's name?");
         }, 2500);
 
+        // Back to listening
+        setTimeout(() => { setOrbMode('listening'); }, 3800);
+
         setTimeout(() => {
+          setOrbMode('speaking');
           setLoading(false);
           showSeverity('EMERGENCY', 'Go to an emergency vet immediately');
           addMessage('agent', "Okay, this is serious but stay calm — dark chocolate contains theobromine which is toxic to dogs, and 3 squares for a 10 kilo dog is a dangerous amount. Don't try to make him vomit, only a vet should do that. Keep him calm and still, and let's get you to an emergency vet right now. What city are you in?");
@@ -762,7 +838,10 @@
             'Note the time of ingestion and amount consumed',
             'Call a vet immediately'
           ]);
-        }, 4000);
+        }, 4500);
+
+        // Back to listening
+        setTimeout(() => { setOrbMode('listening'); }, 6500);
 
         // Simulate user asking for vet
         setTimeout(() => {
@@ -772,6 +851,7 @@
 
         // Simulate vet results
         setTimeout(() => {
+          setOrbMode('speaking');
           setLoading(false);
           addMessage('agent', "I've found some options for you. The closest 24-hour emergency vet is the Royal Veterinary College on Royal College Street — their number is 020 7554 3599. There's also Vets Now Angel on Upper Street, also open 24 hours. You're doing the right thing — head to the closest one now, and they'll take good care of him.");
           showVetResults([
