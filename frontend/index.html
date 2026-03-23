@@ -515,12 +515,13 @@
 
   <!-- Mic Button -->
   <div class="mic-container">
-    <button class="mic-btn" id="micBtn" onclick="toggleConversation()">🎙️</button>
+    <button class="mic-btn" id="micBtn">🎙️</button>
   </div>
 
-  <!-- ElevenLabs SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@11labs/client@latest/dist/bundle.js"></script>
-  <script>
+  <!-- ElevenLabs SDK (ESM) -->
+  <script type="module">
+    import { Conversation } from 'https://cdn.jsdelivr.net/npm/@11labs/client@0.2.0/+esm';
+
     // ─── Config ───────────────────────────────────────────
     const AGENT_ID = new URLSearchParams(window.location.search).get('agentId') || 'agent_3601kmdwd356fp9aqn11mbp03d6y';
 
@@ -640,13 +641,13 @@
     }
 
     // ─── ElevenLabs Conversation ──────────────────────────
-    async function toggleConversation() {
+    let toggleConversation = async function() {
       if (state.isActive) {
         await stopConversation();
       } else {
         await startConversation();
       }
-    }
+    };
 
     async function startConversation() {
       try {
@@ -655,7 +656,7 @@
 
         updateStatus('Connecting...', true);
 
-        state.conversation = await window.ElevenLabsClient.Conversation.startSession({
+        state.conversation = await Conversation.startSession({
           agentId: AGENT_ID,
           onConnect: () => {
             state.isActive = true;
@@ -725,7 +726,7 @@
       console.log('Demo mode active — simulating conversation');
 
       // Override toggle to run demo
-      window.toggleConversation = async function() {
+      toggleConversation = async function() {
         if (state.isActive) {
           state.isActive = false;
           micBtn.classList.remove('listening');
@@ -782,6 +783,9 @@
         }, 9500);
       };
     }
+
+    // ─── Attach mic button handler (after demo override) ──
+    micBtn.addEventListener('click', () => toggleConversation());
   </script>
 </body>
 </html>

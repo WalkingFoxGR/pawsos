@@ -147,30 +147,25 @@ app.post('/api/symptom-search', async (req, res) => {
 
     console.log(`[symptom-search] Searching for: ${coreQuery} (poisoning: ${isPoisoning})`);
 
-    // Tailor search queries to the type of problem
-    const aspca = isPoisoning
-      ? `${coreQuery} toxic poison treatment site:aspca.org`
-      : `${coreQuery} symptoms when to see vet site:aspca.org`;
+    // Tailor search queries — run 2 in parallel for speed (must stay under 8s)
+    const q1 = isPoisoning
+      ? `${coreQuery} toxic poison emergency treatment site:aspca.org OR site:petmd.com`
+      : `${coreQuery} symptoms treatment when to call vet site:petmd.com`;
+    const q2 = `${coreQuery} first aid advice site:bluecross.org.uk OR site:petmd.com`;
 
-    const searchQueries = [
-      { q: aspca, limit: 3 },
-      { q: `${coreQuery} symptoms causes treatment when to call vet site:petmd.com`, limit: 3 },
-      { q: `${coreQuery} first aid advice site:bluecross.org.uk`, limit: 2 }
-    ];
-
-    const searchResults = [];
-    for (const { q, limit } of searchQueries) {
-      try {
-        const result = await firecrawl.search(q, {
-          limit,
-          scrapeOptions: { formats: ['markdown'], onlyMainContent: true }
-        });
-        console.log(`[symptom-search] "${q.split('site:')[1] || q}": ${result?.data?.length || 0} results`);
-        searchResults.push(result);
-      } catch (err) {
-        console.log(`[symptom-search] Search failed: ${err.message}`);
-        searchResults.push({ data: [] });
-      }
+    const searchResults = await Promise.allSettled([
+      firecrawl.search(q1, { limit: 3, scrapeOptions: { formats: ['markdown'], onlyMainContent: true } }),
+      firecrawl.search(q2, { limit: 2, scrapeOptions: { formats: ['markdown'], onlyMainContent: true } })
+    ]).then(results => {
+      return results.map((r, i) => {
+        if (r.status === 'fulfilled') {
+          console.log(`[symptom-search] Query ${i + 1}: ${r.value?.data?.length || 0} results`);
+          return r.value;
+        }
+        console.log(`[symptom-search] Query ${i + 1} FAILED:`, r.reason?.message);
+        return { data: [] };
+      });
+    });
     }
 
     const allContent = searchResults
