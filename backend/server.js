@@ -131,9 +131,22 @@ function extractSources(results) {
   return sources;
 }
 
+// ─── Minimum Response Delay ─────────────────────────────────────────────────
+// Ensures the agent has time to have a conversation before results arrive.
+// The agent asks a personal question while the search runs — this delay
+// guarantees the user has time to answer before results interrupt.
+const MIN_RESPONSE_MS = 8000;
+
+function withMinDelay(startTime) {
+  const elapsed = Date.now() - startTime;
+  const remaining = MIN_RESPONSE_MS - elapsed;
+  return remaining > 0 ? new Promise(r => setTimeout(r, remaining)) : Promise.resolve();
+}
+
 // ─── POST /api/symptom-search ───────────────────────────────────────────────
 
 app.post('/api/symptom-search', async (req, res) => {
+  const startTime = Date.now();
   try {
     const { animal, symptom, details, animal_weight_kg } = req.body;
 
@@ -194,6 +207,10 @@ app.post('/api/symptom-search', async (req, res) => {
     let summary = `Based on trusted veterinary sources, ${symptom} in a ${animal}`;
     if (animal_weight_kg) summary += ` weighing ${animal_weight_kg}kg`;
     summary += ` is classified as ${severity.level}. ${severity.action}.`;
+
+    // Wait minimum time so the agent can have a conversation before results arrive
+    await withMinDelay(startTime);
+    console.log(`[symptom-search] Total time: ${Date.now() - startTime}ms`);
 
     res.json({
       severity: severity.level,
