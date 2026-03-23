@@ -166,7 +166,6 @@ app.post('/api/symptom-search', async (req, res) => {
         return { data: [] };
       });
     });
-    }
 
     const allContent = searchResults
       .flatMap(r => r?.data || [])
