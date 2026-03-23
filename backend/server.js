@@ -135,7 +135,7 @@ function extractSources(results) {
 // Ensures the agent has time to have a conversation before results arrive.
 // The agent asks a personal question while the search runs — this delay
 // guarantees the user has time to answer before results interrupt.
-const MIN_RESPONSE_MS = 8000;
+const MIN_RESPONSE_MS = 5000;
 
 function withMinDelay(startTime) {
   const elapsed = Date.now() - startTime;
@@ -241,9 +241,18 @@ app.post('/api/symptom-search', async (req, res) => {
 // ─── POST /api/vet-finder ───────────────────────────────────────────────────
 
 function extractPhone(text) {
-  const phoneRegex = /[\+\(]?[0-9][0-9\s\-\(\)]{7,}[0-9]/g;
-  const matches = text.match(phoneRegex);
-  return matches ? matches[0].trim() : null;
+  // Try multiple phone formats including international
+  const patterns = [
+    /\+\d{1,3}[\s\-]?\d{3,4}[\s\-]?\d{3,4}[\s\-]?\d{0,4}/g,  // +30 2810 123456
+    /\(\d{2,5}\)\s?\d{3,8}/g,                                     // (2810) 123456
+    /\d{3,5}[\s\-]\d{3,4}[\s\-]\d{3,4}/g,                        // 2810 123 456
+    /[\+\(]?[0-9][0-9\s\-\(\)]{7,}[0-9]/g                        // generic fallback
+  ];
+  for (const regex of patterns) {
+    const matches = text.match(regex);
+    if (matches) return matches[0].trim();
+  }
+  return null;
 }
 
 function extractAddress(text) {
@@ -279,17 +288,31 @@ app.post('/api/vet-finder', async (req, res) => {
     }
 
     const vets = results.data.slice(0, 3).map(item => {
-      const text = item.description || item.markdown || '';
+      const text = (item.description || '') + ' ' + (item.markdown || '');
+      const phone = extractPhone(text);
       return {
         name: item.title || 'Emergency Vet',
         address: extractAddress(text),
-        phone: extractPhone(text),
+        phone,
         open_24h: /24.?h|24.?hour|always open|open now/i.test(text),
         url: item.url
       };
     });
 
-    res.json({ vets });
+    // Build a voice-friendly summary the agent can read aloud
+    const voiceSummary = vets.map((v, i) => {
+      let s = `${i + 1}. ${v.name}`;
+      if (v.phone) s += `, phone number: ${v.phone}`;
+      if (v.address) s += `, address: ${v.address}`;
+      if (v.open_24h) s += ` (open 24 hours)`;
+      return s;
+    }).join('. ');
+
+    res.json({
+      vets,
+      voice_summary: voiceSummary,
+      instruction: 'IMPORTANT: Read the vet NAME and PHONE NUMBER out loud. Do NOT read website URLs. If no phone number is available, say so and suggest the user search online for the number.'
+    });
   } catch (err) {
     console.error('Vet finder error:', err);
     res.status(500).json({
