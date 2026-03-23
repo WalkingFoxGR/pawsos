@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PawSOS — Pet Emergency Voice Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #080d16;
+      --bg-card: #0f1823;
+      --bg-card-hover: #162030;
+      --border: rgba(59, 130, 246, 0.15);
+      --accent-blue: #3b82f6;
+      --accent-emergency: #ef4444;
+      --accent-urgent: #f59e0b;
+      --accent-safe: #10b981;
+      --text-primary: #f1f5f9;
+      --text-secondary: #64748b;
+      --text-muted: #334155;
+    }
+
+    body {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100dvh;
+      display: flex;
+      justify-content: center;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 420px;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: 0 20px;
+      padding-bottom: 120px;
+      position: relative;
+    }
+
+    /* ─── Header ─────────────────────────────────────────── */
+    .header {
+      text-align: center;
+      padding: 40px 0 24px;
+    }
+
+    .header h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem;
+      letter-spacing: -0.5px;
+      color: var(--text-primary);
+    }
+
+    .header h1 .paw { opacity: 0.7; }
+
+    .header p {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin-top: 4px;
+      letter-spacing: 0.3px;
+    }
+
+    /* ─── Voice Visualizer ───────────────────────────────── */
+    .voice-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 0 24px;
+    }
+
+    .waveform {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      height: 48px;
+      margin-bottom: 16px;
+    }
+
+    .waveform .bar {
+      width: 4px;
+      height: 100%;
+      background: var(--accent-blue);
+      border-radius: 4px;
+      transform: scaleY(0.15);
+      transition: transform 0.15s ease;
+    }
+
+    .waveform.active .bar {
+      animation: wave 0.8s ease-in-out infinite;
+    }
+
+    .waveform .bar:nth-child(1) { animation-delay: 0s; }
+    .waveform .bar:nth-child(2) { animation-delay: 0.1s; }
+    .waveform .bar:nth-child(3) { animation-delay: 0.2s; }
+    .waveform .bar:nth-child(4) { animation-delay: 0.3s; }
+    .waveform .bar:nth-child(5) { animation-delay: 0.4s; }
+    .waveform .bar:nth-child(6) { animation-delay: 0.3s; }
+    .waveform .bar:nth-child(7) { animation-delay: 0.2s; }
+    .waveform .bar:nth-child(8) { animation-delay: 0.1s; }
+    .waveform .bar:nth-child(9) { animation-delay: 0s; }
+
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.15); }
+      50% { transform: scaleY(1); }
+    }
+
+    .status-text {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      transition: color 0.3s;
+    }
+
+    .status-text.active { color: var(--accent-blue); }
+
+    /* ─── Severity Badge ─────────────────────────────────── */
+    .severity-badge {
+      display: none;
+      margin: 16px 0;
+      padding: 16px 20px;
+      border-radius: 16px;
+      text-align: center;
+      animation: slideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .severity-badge.visible { display: block; }
+
+    .severity-badge.emergency {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .severity-badge.urgent {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .severity-badge.monitor {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .severity-level {
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .severity-badge.emergency .severity-level { color: var(--accent-emergency); }
+    .severity-badge.urgent .severity-level { color: var(--accent-urgent); }
+    .severity-badge.monitor .severity-level { color: var(--accent-safe); }
+
+    .severity-action {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    @keyframes slideInLeft {
+      from { transform: translateX(-30px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ─── Transcript ─────────────────────────────────────── */
+    .transcript-section {
+      flex: 1;
+      margin-top: 8px;
+    }
+
+    .transcript-section h2 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .transcript {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      padding-right: 4px;
+    }
+
+    .transcript::-webkit-scrollbar { width: 3px; }
+    .transcript::-webkit-scrollbar-track { background: transparent; }
+    .transcript::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+
+    .msg {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      animation: fadeInUp 0.3s ease;
+    }
+
+    .msg.agent {
+      align-self: flex-start;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-bottom-right-radius: 4px;
+    }
+
+    @keyframes fadeInUp {
+      from { transform: translateY(12px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* ─── First Aid ──────────────────────────────────────── */
+    .first-aid-section {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .first-aid-section.visible { display: block; }
+
+    .first-aid-section h2 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .first-aid-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .first-aid-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .first-aid-item:nth-child(1) { animation-delay: 0.1s; }
+    .first-aid-item:nth-child(2) { animation-delay: 0.2s; }
+    .first-aid-item:nth-child(3) { animation-delay: 0.3s; }
+    .first-aid-item:nth-child(4) { animation-delay: 0.4s; }
+
+    .first-aid-check {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: var(--accent-blue);
+      margin-top: 1px;
+    }
+
+    /* ─── Vet Results ────────────────────────────────────── */
+    .vet-section {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .vet-section.visible { display: block; }
+
+    .vet-section h2 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .vet-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .vet-card {
+      padding: 14px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+      transition: background 0.2s;
+    }
+
+    .vet-card:hover { background: var(--bg-card-hover); }
+
+    .vet-card:nth-child(1) { animation-delay: 0.1s; }
+    .vet-card:nth-child(2) { animation-delay: 0.25s; }
+    .vet-card:nth-child(3) { animation-delay: 0.4s; }
+
+    .vet-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-24h {
+      font-size: 0.6rem;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-safe);
+      letter-spacing: 0.5px;
+    }
+
+    .vet-detail {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .vet-phone {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--accent-blue);
+    }
+
+    .vet-call-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 8px;
+      color: var(--accent-blue);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .vet-call-btn:hover { background: rgba(59, 130, 246, 0.25); }
+
+    /* ─── Mic Button ─────────────────────────────────────── */
+    .mic-container {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      padding: 20px 0 36px;
+      background: linear-gradient(transparent, var(--bg-primary) 30%);
+      z-index: 10;
+    }
+
+    .mic-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: none;
+      background: var(--accent-blue);
+      color: white;
+      font-size: 1.6rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: transform 0.15s, background 0.3s;
+      box-shadow: 0 4px 24px rgba(59, 130, 246, 0.3);
+    }
+
+    .mic-btn:active { transform: scale(0.95); }
+
+    .mic-btn.listening {
+      background: var(--accent-emergency);
+      box-shadow: 0 4px 24px rgba(239, 68, 68, 0.3);
+    }
+
+    .mic-btn::before {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 2px solid var(--accent-blue);
+      opacity: 0;
+      animation: pulse-ring 2s infinite;
+    }
+
+    .mic-btn.listening::before {
+      border-color: var(--accent-emergency);
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.6; }
+      70% { transform: scale(1.15); opacity: 0; }
+      100% { transform: scale(0.95); opacity: 0; }
+    }
+
+    /* ─── Loading ────────────────────────────────────────── */
+    .loading-indicator {
+      display: none;
+      text-align: center;
+      padding: 16px;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .loading-indicator.visible { display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Disclaimer ─────────────────────────────────────── */
+    .disclaimer {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      padding: 24px 20px 8px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <h1><span class="paw">🐾</span> PawSOS</h1>
+      <p>Pet emergency voice assistant</p>
+    </header>
+
+    <!-- Voice Visualizer -->
+    <div class="voice-section">
+      <div class="waveform" id="waveform">
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      </div>
+      <span class="status-text" id="statusText">Tap the mic to start</span>
+    </div>
+
+    <!-- Severity Badge -->
+    <div class="severity-badge" id="severityBadge">
+      <div class="severity-level" id="severityLevel"></div>
+      <div class="severity-action" id="severityAction"></div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div class="loading-indicator" id="loading">
+      <div class="spinner"></div>
+      <span>Searching trusted vet sources...</span>
+    </div>
+
+    <!-- Transcript -->
+    <div class="transcript-section">
+      <h2>Conversation</h2>
+      <div class="transcript" id="transcript"></div>
+    </div>
+
+    <!-- First Aid -->
+    <div class="first-aid-section" id="firstAidSection">
+      <h2>Immediate Actions</h2>
+      <ul class="first-aid-list" id="firstAidList"></ul>
+    </div>
+
+    <!-- Vet Results -->
+    <div class="vet-section" id="vetSection">
+      <h2>Emergency Vets Nearby</h2>
+      <div class="vet-cards" id="vetCards"></div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+      Not a replacement for professional veterinary care.<br>
+      In life-threatening situations, go to a vet immediately.
+    </div>
+  </div>
+
+  <!-- Mic Button -->
+  <div class="mic-container">
+    <button class="mic-btn" id="micBtn" onclick="toggleConversation()">🎙️</button>
+  </div>
+
+  <!-- ElevenLabs SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@11labs/client@latest/dist/bundle.js"></script>
+  <script>
+    // ─── Config ───────────────────────────────────────────
+    const AGENT_ID = new URLSearchParams(window.location.search).get('agentId') || 'YOUR_AGENT_ID';
+
+    // ─── State ────────────────────────────────────────────
+    const state = {
+      conversation: null,
+      isActive: false,
+      severity: null,
+      firstAid: [],
+      vets: []
+    };
+
+    // ─── DOM Refs ─────────────────────────────────────────
+    const $ = (id) => document.getElementById(id);
+    const micBtn = $('micBtn');
+    const waveform = $('waveform');
+    const statusText = $('statusText');
+    const transcript = $('transcript');
+    const severityBadge = $('severityBadge');
+    const severityLevel = $('severityLevel');
+    const severityAction = $('severityAction');
+    const firstAidSection = $('firstAidSection');
+    const firstAidList = $('firstAidList');
+    const vetSection = $('vetSection');
+    const vetCards = $('vetCards');
+    const loading = $('loading');
+
+    // ─── UI Updates ───────────────────────────────────────
+    function updateStatus(text, active = false) {
+      statusText.textContent = text;
+      statusText.classList.toggle('active', active);
+    }
+
+    function setWaveformActive(active) {
+      waveform.classList.toggle('active', active);
+    }
+
+    function addMessage(role, text) {
+      if (!text || !text.trim()) return;
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      div.textContent = text;
+      transcript.appendChild(div);
+      transcript.scrollTop = transcript.scrollHeight;
+    }
+
+    function showSeverity(level, action) {
+      state.severity = level;
+      const cls = level === 'EMERGENCY' ? 'emergency' : level === 'URGENT' ? 'urgent' : 'monitor';
+      const emoji = level === 'EMERGENCY' ? '🔴' : level === 'URGENT' ? '🟡' : '🟢';
+
+      severityBadge.className = `severity-badge visible ${cls}`;
+      severityLevel.textContent = `${emoji} ${level}`;
+      severityAction.textContent = action;
+    }
+
+    function showFirstAid(items) {
+      if (!items || !items.length) return;
+      firstAidList.innerHTML = '';
+      items.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'first-aid-item';
+        li.innerHTML = `<span class="first-aid-check">✓</span><span>${item}</span>`;
+        firstAidList.appendChild(li);
+      });
+      firstAidSection.classList.add('visible');
+    }
+
+    function showVetResults(vets) {
+      if (!vets || !vets.length) return;
+      vetCards.innerHTML = '';
+      vets.forEach(vet => {
+        const card = document.createElement('div');
+        card.className = 'vet-card';
+        let html = `<div class="vet-name">🏥 ${vet.name}`;
+        if (vet.open_24h) html += `<span class="badge-24h">24H</span>`;
+        html += `</div>`;
+        if (vet.address) html += `<div class="vet-detail">📍 ${vet.address}</div>`;
+        if (vet.phone) html += `<div class="vet-detail">📞 <span class="vet-phone">${vet.phone}</span></div>`;
+        if (vet.phone) {
+          const tel = vet.phone.replace(/\s/g, '');
+          html += `<a href="tel:${tel}" class="vet-call-btn">📞 Call Now</a>`;
+        } else if (vet.url) {
+          html += `<a href="${vet.url}" target="_blank" rel="noopener" class="vet-call-btn">🔍 View Details</a>`;
+        }
+        card.innerHTML = html;
+        vetCards.appendChild(card);
+      });
+      vetSection.classList.add('visible');
+    }
+
+    function setLoading(visible) {
+      loading.classList.toggle('visible', visible);
+    }
+
+    // ─── Parse Agent Messages for UI ──────────────────────
+    function parseAgentMessage(text) {
+      const lower = text.toLowerCase();
+
+      // Detect severity
+      if (!state.severity) {
+        if (lower.includes('emergency') || lower.includes('immediately') || lower.includes('right now') || lower.includes('life-threatening')) {
+          showSeverity('EMERGENCY', 'Go to an emergency vet immediately');
+        } else if (lower.includes('urgent') || lower.includes('see a vet today') || lower.includes('as soon as possible')) {
+          showSeverity('URGENT', 'See a vet today');
+        } else if (lower.includes('monitor') || lower.includes('watch at home') || lower.includes('not an emergency')) {
+          showSeverity('MONITOR', 'Monitor at home, call vet if worsens');
+        }
+      }
+
+      // Detect first-aid instructions (numbered items in agent speech)
+      const numberedSteps = text.match(/\d+[.)]\s*[A-Z][^.!?]{10,}[.!?]/g);
+      if (numberedSteps && numberedSteps.length >= 2) {
+        const steps = numberedSteps.map(s => s.replace(/^\d+[.)]\s*/, '').trim());
+        showFirstAid(steps);
+      }
+    }
+
+    // ─── ElevenLabs Conversation ──────────────────────────
+    async function toggleConversation() {
+      if (state.isActive) {
+        await stopConversation();
+      } else {
+        await startConversation();
+      }
+    }
+
+    async function startConversation() {
+      try {
+        // Request mic permission
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        updateStatus('Connecting...', true);
+
+        state.conversation = await window.ElevenLabsClient.Conversation.startSession({
+          agentId: AGENT_ID,
+          onConnect: () => {
+            state.isActive = true;
+            micBtn.classList.add('listening');
+            updateStatus('Listening...', true);
+            setWaveformActive(true);
+          },
+          onDisconnect: () => {
+            state.isActive = false;
+            micBtn.classList.remove('listening');
+            updateStatus('Session ended');
+            setWaveformActive(false);
+          },
+          onMessage: (message) => {
+            if (message.source === 'ai') {
+              addMessage('agent', message.message);
+              parseAgentMessage(message.message);
+              setLoading(false);
+            } else if (message.source === 'user') {
+              addMessage('user', message.message);
+            }
+          },
+          onModeChange: (mode) => {
+            if (mode.mode === 'speaking') {
+              setWaveformActive(true);
+              updateStatus('Speaking...', true);
+            } else if (mode.mode === 'listening') {
+              setWaveformActive(false);
+              updateStatus('Listening...', true);
+            }
+          },
+          onError: (error) => {
+            console.error('ElevenLabs error:', error);
+            updateStatus('Connection error — tap to retry');
+            state.isActive = false;
+            micBtn.classList.remove('listening');
+            setWaveformActive(false);
+          }
+        });
+      } catch (err) {
+        console.error('Failed to start:', err);
+        if (err.name === 'NotAllowedError') {
+          updateStatus('Microphone access denied');
+        } else {
+          updateStatus('Failed to connect — tap to retry');
+        }
+      }
+    }
+
+    async function stopConversation() {
+      if (state.conversation) {
+        await state.conversation.endSession();
+        state.conversation = null;
+      }
+      state.isActive = false;
+      micBtn.classList.remove('listening');
+      updateStatus('Tap the mic to start');
+      setWaveformActive(false);
+    }
+
+    // ─── Demo Mode (for testing without ElevenLabs) ───────
+    function isDemoMode() {
+      return new URLSearchParams(window.location.search).get('demo') === 'true';
+    }
+
+    if (isDemoMode()) {
+      console.log('Demo mode active — simulating conversation');
+
+      // Override toggle to run demo
+      window.toggleConversation = async function() {
+        if (state.isActive) {
+          state.isActive = false;
+          micBtn.classList.remove('listening');
+          updateStatus('Tap the mic to start');
+          setWaveformActive(false);
+          return;
+        }
+
+        state.isActive = true;
+        micBtn.classList.add('listening');
+        setWaveformActive(true);
+        updateStatus('Listening...', true);
+
+        // Simulate user message
+        setTimeout(() => {
+          addMessage('user', 'My labrador just ate about 3 squares of dark chocolate, he weighs 10 kilos');
+          updateStatus('Searching trusted vet sources...', true);
+          setLoading(true);
+        }, 1500);
+
+        // Simulate agent comfort + response
+        setTimeout(() => {
+          addMessage('agent', "It's okay, I'm here to help. Take a breath — let me look into this for you right away.");
+        }, 2500);
+
+        setTimeout(() => {
+          setLoading(false);
+          showSeverity('EMERGENCY', 'Go to an emergency vet immediately');
+          addMessage('agent', "Okay, this is serious but stay calm — dark chocolate contains theobromine which is toxic to dogs, and 3 squares for a 10 kilo dog is a dangerous amount. Don't try to make him vomit, only a vet should do that. Keep him calm and still, and let's get you to an emergency vet right now. What city are you in?");
+          showFirstAid([
+            'Do NOT induce vomiting unless instructed by a vet',
+            'Keep the dog calm and still',
+            'Note the time of ingestion and amount consumed',
+            'Call a vet immediately'
+          ]);
+        }, 4000);
+
+        // Simulate user asking for vet
+        setTimeout(() => {
+          addMessage('user', "Yes please, I'm in London");
+          setLoading(true);
+        }, 7000);
+
+        // Simulate vet results
+        setTimeout(() => {
+          setLoading(false);
+          addMessage('agent', "I've found some options for you. The closest 24-hour emergency vet is the Royal Veterinary College on Royal College Street — their number is 020 7554 3599. There's also Vets Now Angel on Upper Street, also open 24 hours. You're doing the right thing — head to the closest one now, and they'll take good care of him.");
+          showVetResults([
+            { name: 'Royal Veterinary College', address: 'Royal College Street, Camden', phone: '020 7554 3599', open_24h: true, url: '#' },
+            { name: 'Vets Now Angel', address: 'Upper Street, Islington', phone: '020 7226 5111', open_24h: true, url: '#' },
+            { name: 'Village Vet Hampstead', address: 'Heath Street, Hampstead', phone: '020 7431 1233', open_24h: false, url: '#' }
+          ]);
+          updateStatus('Session active', true);
+        }, 9500);
+      };
+    }
+  </script>
+</body>
+</html>
