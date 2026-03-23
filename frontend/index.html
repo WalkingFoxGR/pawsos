@@ -616,59 +616,105 @@
       });
     }
 
+    // Tail wag angle for speaking mode
+    let tailWag = 0;
+
     function drawOrb() {
       orbTime += 0.016;
       ctx.clearRect(0, 0, W, H);
 
       // Morph progress: smoothly transition
       const targetMorph = orbMode === 'speaking' ? 1 : 0;
-      morphProgress += (targetMorph - morphProgress) * 0.04;
+      morphProgress += (targetMorph - morphProgress) * 0.035;
 
       // Orb radius based on mode
-      const orbRadius = orbMode === 'listening' ? 65 : 45;
+      const orbRadius = orbMode === 'listening' ? 60 : 42;
 
-      // Glow
-      const glowAlpha = orbMode === 'speaking' ? 0.15 : 0.08;
-      const gradient = ctx.createRadialGradient(CX, CY, 0, CX, CY, 120);
-      gradient.addColorStop(0, `rgba(59, 130, 246, ${glowAlpha})`);
+      // Glow — warmer when speaking (dog form)
+      const glowR = orbMode === 'speaking' ? 80 : 59;
+      const glowG = orbMode === 'speaking' ? 140 : 130;
+      const glowB = orbMode === 'speaking' ? 246 : 246;
+      const glowAlpha = orbMode === 'speaking' ? 0.18 : 0.08;
+      const gradient = ctx.createRadialGradient(CX, CY, 0, CX, CY, 130);
+      gradient.addColorStop(0, `rgba(${glowR}, ${glowG}, ${glowB}, ${glowAlpha})`);
+      gradient.addColorStop(0.6, `rgba(${glowR}, ${glowG}, ${glowB}, ${glowAlpha * 0.3})`);
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = gradient;
       ctx.beginPath();
-      ctx.arc(CX, CY, 120, 0, Math.PI * 2);
+      ctx.arc(CX, CY, 130, 0, Math.PI * 2);
       ctx.fill();
 
-      for (const p of particles) {
+      // Tail wag animation
+      if (orbMode === 'speaking') {
+        tailWag = Math.sin(orbTime * 5) * 12;
+      } else {
+        tailWag *= 0.95;
+      }
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+
         // Calculate orb position (circular floating)
-        p.orbAngle += p.orbSpeed * 0.012;
-        const breathe = Math.sin(orbTime * 0.8 + p.orbPhase) * 10;
-        const drift = orbMode === 'listening' ? Math.sin(orbTime * 1.5 + p.orbPhase * 2) * 5 : 0;
+        p.orbAngle += p.orbSpeed * 0.01;
+        const breathe = Math.sin(orbTime * 0.6 + p.orbPhase) * 8;
+        const drift = orbMode === 'listening'
+          ? Math.sin(orbTime * 1.2 + p.orbPhase * 2) * 4
+          : Math.sin(orbTime * 0.5 + p.orbPhase) * 2;
         const oX = CX + Math.cos(p.orbAngle) * (orbRadius + breathe) + drift;
         const oY = CY + Math.sin(p.orbAngle) * (orbRadius + breathe) * 0.85 + drift;
 
-        // Calculate dog position (with subtle animation)
-        const dogWiggle = orbMode === 'speaking' ? Math.sin(orbTime * 3 + p.offset) * 2.5 : 0;
-        const dogBreath = Math.sin(orbTime * 1.5 + p.offset * 0.5) * 1.5;
-        const dX = p.dogX + dogWiggle;
-        const dY = p.dogY + dogBreath;
+        // Dog position with breathing and tail wag
+        let dX = p.dogX;
+        let dY = p.dogY;
+
+        // Gentle body breathing
+        const bodyBreath = Math.sin(orbTime * 1.2) * 1.5;
+        dY += bodyBreath;
+
+        // Tail particles wag (last 7 points are the tail)
+        if (i >= particles.length - 7) {
+          dX += tailWag * (1 + (i - (particles.length - 7)) * 0.15);
+        }
+
+        // Head bob when speaking
+        if (i < 17) { // head + snout points
+          const headBob = orbMode === 'speaking' ? Math.sin(orbTime * 2.5) * 2 : 0;
+          dY += headBob;
+        }
 
         // Interpolate between orb and dog
-        p.x += ((oX * (1 - morphProgress) + dX * morphProgress) - p.x) * 0.08;
-        p.y += ((oY * (1 - morphProgress) + dY * morphProgress) - p.y) * 0.08;
+        const targetX = oX * (1 - morphProgress) + dX * morphProgress;
+        const targetY = oY * (1 - morphProgress) + dY * morphProgress;
+        p.x += (targetX - p.x) * 0.07;
+        p.y += (targetY - p.y) * 0.07;
 
-        // Alpha
+        // Alpha — softer pulsing
         const pulse = orbMode === 'speaking'
-          ? 0.7 + 0.3 * Math.sin(orbTime * 4 + p.offset)
-          : 0.5 + 0.3 * Math.sin(orbTime * 1.2 + p.offset);
+          ? 0.75 + 0.25 * Math.sin(orbTime * 2.5 + p.offset)
+          : 0.45 + 0.35 * Math.sin(orbTime * 1.0 + p.offset);
         const alpha = p.opacity * pulse;
 
-        // Color shifts slightly when speaking
-        const blue = orbMode === 'speaking' ? 240 : 220;
-        const green = orbMode === 'speaking' ? 190 : 180;
+        // Particle size — slightly larger when formed as dog for clarity
+        const sz = p.size * (1 + morphProgress * 0.3);
 
+        // Color — warmer blue when speaking
+        const r = 100 + morphProgress * 40;
+        const g = 170 + morphProgress * 20;
+        const b = 245 - morphProgress * 10;
+
+        // Draw with soft glow
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(120, ${green}, ${blue}, ${alpha})`;
+        ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${r|0}, ${g|0}, ${b|0}, ${alpha})`;
         ctx.fill();
+
+        // Add subtle glow around each particle when in dog form
+        if (morphProgress > 0.5) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, sz * 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${r|0}, ${g|0}, ${b|0}, ${alpha * 0.08})`;
+          ctx.fill();
+        }
       }
 
       requestAnimationFrame(drawOrb);
