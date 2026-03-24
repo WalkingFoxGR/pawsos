@@ -233,6 +233,7 @@ function extractAddress(text) {
 app.post('/api/vet-finder', async (req, res) => {
   try {
     const { city, country, animal_type } = req.body;
+    console.log('Vet finder request:', JSON.stringify(req.body));
 
     if (!city) {
       return res.status(400).json({ error: 'city is required' });

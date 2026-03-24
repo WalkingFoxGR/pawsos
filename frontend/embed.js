@@ -1,5 +1,5 @@
 /**
- * PawSOS Embeddable Widget
+ * Pawgent Embeddable Widget
  * Usage: <script src="embed.js" data-agent-id="agent_xxx"></script>
  */
 (function () {
@@ -277,7 +277,7 @@
       <div id="pawsos-panel-header">
         <canvas id="pawsos-header-canvas" width="88" height="88"></canvas>
         <div id="pawsos-header-info">
-          <h3>PawSOS</h3>
+          <h3>Pawgent</h3>
           <div id="pawsos-header-status">Tap the orb to start</div>
         </div>
         <button id="pawsos-close">&times;</button>
@@ -294,7 +294,7 @@
       <div id="pawsos-orb-ring"></div>
       <div id="pawsos-badge"></div>
       <canvas id="pawsos-orb-canvas" width="160" height="160"></canvas>
-      <div id="pawsos-orb-label">PawSOS</div>
+      <div id="pawsos-orb-label">Pawgent</div>
     </div>
   `;
   document.body.appendChild(widget);
@@ -488,7 +488,7 @@
           else if (m.mode === 'listening') { orbMode = 'listening'; setStatus('Listening...', true); }
         },
         onError: (e) => {
-          console.error('PawSOS:', e);
+          console.error('Pawgent:', e);
           setStatus('Error — tap to retry');
           isActive = false; orbMode = 'idle';
           endCallBtn.classList.remove('visible');
@@ -496,7 +496,7 @@
         }
       });
     } catch (e) {
-      console.error('PawSOS:', e);
+      console.error('Pawgent:', e);
       setStatus(e.name === 'NotAllowedError' ? 'Mic access denied' : 'Error — tap to retry');
       startCallBtn.classList.add('visible');
     }
