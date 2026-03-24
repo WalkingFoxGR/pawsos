@@ -238,7 +238,8 @@ app.post('/api/vet-finder', async (req, res) => {
       return res.status(400).json({ error: 'city is required' });
     }
 
-    const query = `emergency vet ${city} ${country || ''} open now 24 hours animal hospital`;
+    const location = country || 'Greece';
+    const query = `emergency veterinary clinic ${city} ${location} open now 24 hour animal hospital phone number`;
 
     const results = await firecrawl.search(query, {
       limit: 5
