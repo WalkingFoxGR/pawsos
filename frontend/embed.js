@@ -289,7 +289,17 @@
 
     @media (max-width: 480px) {
       #pawsos-widget.pawsos-floating { bottom: 16px; right: 16px; }
-      .pawsos-floating #pawsos-panel { width: calc(100vw - 32px); right: -16px; bottom: 180px; }
+      .pawsos-floating #pawsos-panel {
+        position: fixed;
+        bottom: auto;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100vw;
+        max-height: 70vh;
+        border-radius: 0 0 24px 24px;
+        z-index: 100000;
+      }
       #pawsos-orb-wrap { width: 120px; height: 120px; }
       .pawsos-inline #pawsos-orb-wrap { width: 160px; height: 160px; }
     }
