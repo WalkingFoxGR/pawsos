@@ -23,8 +23,8 @@
 
     /* ── Floating Orb Button ── */
     #pawsos-orb-wrap {
-      width: 80px;
-      height: 80px;
+      width: 160px;
+      height: 160px;
       cursor: pointer;
       position: relative;
       margin-left: auto;
@@ -93,7 +93,7 @@
     #pawsos-panel {
       display: none;
       position: absolute;
-      bottom: 100px;
+      bottom: 180px;
       right: 0;
       width: 380px;
       max-height: 540px;
@@ -293,7 +293,7 @@
     <div id="pawsos-orb-wrap">
       <div id="pawsos-orb-ring"></div>
       <div id="pawsos-badge"></div>
-      <canvas id="pawsos-orb-canvas" width="160" height="160"></canvas>
+      <canvas id="pawsos-orb-canvas" width="320" height="320"></canvas>
       <div id="pawsos-orb-label">Pawgent</div>
     </div>
   `;
@@ -339,7 +339,7 @@
       orbSpeed: 0.25 + Math.random() * 0.45,
       orbPhase: Math.random() * Math.PI * 2,
       dogX: cx + dx * scale, dogY: cy + dy * scale,
-      size: 0.8 + Math.random() * 1.2,
+      size: 1.8 + Math.random() * 2.2,
       opacity: 0.35 + Math.random() * 0.55,
       offset: Math.random() * Math.PI * 2
     }));
@@ -392,8 +392,8 @@
   // ─── Two Canvases: Orb + Header ─────────────────────────
   const orbCanvas = document.getElementById('pawsos-orb-canvas');
   const orbCtx = orbCanvas.getContext('2d');
-  const orbW = 160, orbCX = 80, orbCY = 80;
-  const orbParticles = createParticles(orbCX, orbCY, 60);
+  const orbW = 320, orbCX = 160, orbCY = 160;
+  const orbParticles = createParticles(orbCX, orbCY, 120);
 
   const hdrCanvas = document.getElementById('pawsos-header-canvas');
   const hdrCtx = hdrCanvas.getContext('2d');
@@ -406,7 +406,7 @@
     orbTime += 0.016;
     const targetMorph = orbMode === 'speaking' ? 1 : 0;
     morphProgress += (targetMorph - morphProgress) * 0.04;
-    const orbR = orbMode === 'listening' ? 28 : 20;
+    const orbR = orbMode === 'listening' ? 56 : 40;
     const hdrR = orbMode === 'listening' ? 16 : 12;
 
     drawParticles(orbCtx, orbW, orbW, orbCX, orbCY, orbR, orbParticles, morphProgress, [0,0,0]);
