@@ -28,6 +28,9 @@
     }
     #pawsos-widget.pawsos-inline {
       position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     /* ── Floating Orb Button ── */
@@ -121,6 +124,8 @@
     .pawsos-inline #pawsos-panel {
       position: relative;
       margin-bottom: 12px;
+      left: auto;
+      right: auto;
     }
 
     @keyframes pawsos-slideUp {
