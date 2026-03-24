@@ -1,11 +1,15 @@
 /**
  * Pawgent Embeddable Widget
- * Usage: <script src="embed.js" data-agent-id="agent_xxx"></script>
+ * Usage:
+ *   Floating (bottom-right): <script src="embed.js"></script>
+ *   Inline (your container):  <script src="embed.js" data-container="my-div-id"></script>
  */
 (function () {
+  const scriptEl = document.currentScript;
   const AGENT_ID =
-    document.currentScript?.getAttribute('data-agent-id') ||
+    scriptEl?.getAttribute('data-agent-id') ||
     'agent_3601kmdwd356fp9aqn11mbp03d6y';
+  const CONTAINER_ID = scriptEl?.getAttribute('data-container') || null;
 
   // ─── Styles ─────────────────────────────────────────────
   const style = document.createElement('style');
@@ -13,12 +17,17 @@
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
 
     #pawsos-widget {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    #pawsos-widget.pawsos-floating {
       position: fixed;
       bottom: 28px;
       right: 28px;
       z-index: 99999;
-      font-family: 'DM Sans', -apple-system, sans-serif;
-      -webkit-font-smoothing: antialiased;
+    }
+    #pawsos-widget.pawsos-inline {
+      position: relative;
     }
 
     /* ── Floating Orb Button ── */
@@ -92,9 +101,6 @@
     /* ── Panel ── */
     #pawsos-panel {
       display: none;
-      position: absolute;
-      bottom: 180px;
-      right: 0;
       width: 380px;
       max-height: 540px;
       background: #080d16;
@@ -106,6 +112,16 @@
       animation: pawsos-slideUp 0.35s cubic-bezier(0.16,1,0.3,1);
     }
     #pawsos-panel.open { display: flex; }
+
+    .pawsos-floating #pawsos-panel {
+      position: absolute;
+      bottom: 180px;
+      right: 0;
+    }
+    .pawsos-inline #pawsos-panel {
+      position: relative;
+      margin-bottom: 12px;
+    }
 
     @keyframes pawsos-slideUp {
       from { transform: translateY(20px) scale(0.97); opacity: 0; }
@@ -297,7 +313,14 @@
       <div id="pawsos-orb-label">Pawgent</div>
     </div>
   `;
-  document.body.appendChild(widget);
+  const container = CONTAINER_ID ? document.getElementById(CONTAINER_ID) : null;
+  if (container) {
+    widget.classList.add('pawsos-inline');
+    container.appendChild(widget);
+  } else {
+    widget.classList.add('pawsos-floating');
+    document.body.appendChild(widget);
+  }
 
   // ─── Refs ───────────────────────────────────────────────
   const panel = document.getElementById('pawsos-panel');
