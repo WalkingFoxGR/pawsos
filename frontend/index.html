@@ -653,13 +653,12 @@
       // Smooth radius transition
       const orbRadius = targetRadius; // particles lerp anyway
 
-      // Rotation: listening and thinking rotate 360, others don't
-      const shouldRotate = orbMode === 'listening' || orbMode === 'thinking';
-      const rotSpeed = orbMode === 'thinking' ? 2.5 : 1.5; // thinking spins faster
-      if (shouldRotate) {
-        rotationAngle += 0.016 * rotSpeed;
+      // Rotation: gentle drift when listening, faster spin when thinking
+      if (orbMode === 'thinking') {
+        rotationAngle += 0.016 * 2.5;
+      } else if (orbMode === 'listening') {
+        rotationAngle += 0.016 * 0.3; // gentle slow drift
       } else {
-        // Slowly decelerate rotation when stopping
         rotationAngle *= 0.97;
       }
 

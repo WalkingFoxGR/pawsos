@@ -9,127 +9,52 @@ app.use(express.json());
 
 const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY });
 
-// ─── Language Detection ─────────────────────────────────────────────────────
-// Detects if text contains Greek characters or if language param is 'el'
-
-function detectLanguage(text, langParam) {
-  if (langParam === 'el' || langParam === 'greek') return 'el';
-  if (langParam === 'en' || langParam === 'english') return 'en';
-  // Auto-detect: if >30% of alphabetic chars are Greek, it's Greek
-  if (text) {
-    const alphaChars = text.replace(/[^a-zA-Zα-ωά-ώΑ-ΩΆ-Ώ]/g, '');
-    const greekChars = text.replace(/[^α-ωά-ώΑ-ΩΆ-Ώ]/g, '');
-    if (alphaChars.length > 0 && greekChars.length / alphaChars.length > 0.3) return 'el';
-  }
-  return 'en';
-}
-
 // ─── Severity Classification ────────────────────────────────────────────────
 
 const EMERGENCY_KEYWORDS = [
-  // English
   'immediately', 'emergency', 'toxic', 'poison', 'seizure', 'convuls',
   'cannot breathe', 'difficulty breathing', 'unconscious', 'collapse',
   'bloat', 'prolapse', 'heatstroke', 'internal bleeding', 'fatal',
   'xylitol', 'dark chocolate', 'antifreeze', 'rat poison', 'ibuprofen',
   'acetaminophen', 'grape', 'raisin', 'onion toxicity', 'garlic toxicity',
   'urinary blockage', 'gi stasis', 'lying on side unresponsive',
-  'theobromine', 'lily toxicity', 'ethylene glycol',
-  // Greek
-  'δηλητηρίαση', 'δηλητήριο', 'τοξικό', 'σπασμοί', 'σπασμός', 'επιληπτικό',
-  'δεν αναπνέει', 'δυσκολία αναπνοής', 'αναίσθητο', 'αναίσθητος', 'κατέρρευσε',
-  'φούσκωμα στομάχου', 'θερμοπληξία', 'εσωτερική αιμορραγία', 'θανατηφόρο',
-  'ξυλιτόλη', 'σοκολάτα', 'αντιψυκτικό', 'φυτοφάρμακο', 'ποντικοφάρμακο',
-  'ιβουπροφαίνη', 'σταφύλι', 'σταφύλια', 'σταφίδα', 'σταφίδες',
-  'κρεμμύδι', 'σκόρδο', 'ουρολογικό', 'απόφραξη ουροδόχου',
-  'έφαγε σοκολάτα', 'έφαγε φάρμακο', 'ήπιε', 'κατάπιε',
-  'λιμνάζει', 'δεν κινείται', 'δεν σηκώνεται'
+  'theobromine', 'lily toxicity', 'ethylene glycol'
 ];
 
 const URGENT_KEYWORDS = [
-  // English
   'today', 'soon as possible', 'within 24', 'urgent', 'should see',
   'vomiting multiple', 'vomiting repeatedly', 'not eating', 'bloody',
   'wound', 'fracture', 'limping severely', 'eye injury', 'infection',
-  'swollen', 'blood in stool', 'blood in urine', 'lethargy',
-  // Greek
-  'σήμερα', 'επείγον', 'το συντομότερο', 'εντός 24',
-  'κάνει εμετό', 'εμετός', 'εμετοί', 'δεν τρώει', 'αίμα',
-  'πληγή', 'τραύμα', 'κάταγμα', 'κουτσαίνει', 'τραυματισμός ματιού',
-  'μόλυνση', 'πρησμένο', 'πρησμένος', 'αίμα στα κόπρανα',
-  'αίμα στα ούρα', 'λήθαργος', 'λήθαργο', 'αδράνεια',
-  'διάρροια', 'πόνος', 'πονάει', 'ούρλιαζε', 'κλαίει'
+  'swollen', 'blood in stool', 'blood in urine', 'lethargy'
 ];
-
-// Greek translations for severity responses
-const SEVERITY_TEXT = {
-  el: {
-    EMERGENCY: {
-      action: 'Πηγαίνετε αμέσως σε κτηνίατρο έκτακτης ανάγκης',
-      timeframe: 'τώρα'
-    },
-    URGENT: {
-      action: 'Επισκεφθείτε κτηνίατρο σήμερα',
-      timeframe: 'σήμερα'
-    },
-    MONITOR: {
-      action: 'Παρακολουθήστε στο σπίτι, καλέστε κτηνίατρο αν χειροτερέψει',
-      timeframe: 'παρακολούθηση'
-    }
-  },
-  en: {
-    EMERGENCY: {
-      action: 'Go to an emergency vet immediately',
-      timeframe: 'now'
-    },
-    URGENT: {
-      action: 'See a vet today',
-      timeframe: 'today'
-    },
-    MONITOR: {
-      action: 'Monitor at home, call vet if worsens',
-      timeframe: 'monitor'
-    }
-  }
-};
-
-// Greek fallback first-aid steps
-const FALLBACK_FIRST_AID = {
-  el: [
-    'Κρατήστε το ζώο σας ήρεμο και άνετο',
-    'Μην δίνετε κανένα φάρμακο χωρίς συμβουλή κτηνιάτρου',
-    'Σημειώστε πότε ξεκίνησαν τα συμπτώματα και τι μπορεί να κατάπιε',
-    'Επικοινωνήστε με τον κτηνίατρό σας ή με κτηνιατρείο έκτακτης ανάγκης'
-  ],
-  en: [
-    'Keep your pet calm and comfortable',
-    'Do not give any medication without vet advice',
-    'Note the time symptoms started and any substances ingested',
-    'Contact your vet or emergency animal hospital'
-  ]
-};
 
 function classifySeverity(content, symptom) {
   const text = (content + ' ' + symptom).toLowerCase();
 
   if (EMERGENCY_KEYWORDS.some(kw => text.includes(kw))) {
-    return { level: 'EMERGENCY', color: 'red' };
+    return {
+      level: 'EMERGENCY',
+      color: 'red',
+      action: 'Go to an emergency vet immediately',
+      timeframe: 'now'
+    };
   }
 
   if (URGENT_KEYWORDS.some(kw => text.includes(kw))) {
-    return { level: 'URGENT', color: 'amber' };
+    return {
+      level: 'URGENT',
+      color: 'amber',
+      action: 'See a vet today',
+      timeframe: 'today'
+    };
   }
 
-  return { level: 'MONITOR', color: 'green' };
-}
-
-// ─── Language instruction injected into every tool response ──────────────────
-
-function languageInstruction(lang) {
-  if (lang === 'el') {
-    return 'CRITICAL LANGUAGE RULE: The user is speaking Greek. You MUST respond ONLY in Greek. Do NOT use ANY English words — not even medical terms, severity levels, or filler words. Translate EVERYTHING to natural, fluent Greek. Say "κτηνίατρος" not "vet", "δηλητηρίαση" not "poisoning", "έκτακτη ανάγκη" not "emergency". Speak as a native Greek speaker would. No English at all.';
-  }
-  return '';
+  return {
+    level: 'MONITOR',
+    color: 'green',
+    action: 'Monitor at home, call vet if worsens',
+    timeframe: 'monitor'
+  };
 }
 
 // ─── First Aid Extraction ───────────────────────────────────────────────────
@@ -171,24 +96,16 @@ function extractFirstAid(content, symptom) {
     if (steps.length >= 4) break;
   }
 
-  return steps.length > 0 ? steps : null;
-}
-
-// ─── Source Extraction ──────────────────────────────────────────────────────
-
-function extractSources(searchResults) {
-  const sources = [];
-  for (const r of searchResults) {
-    for (const item of (r?.data || [])) {
-      if (item.url) {
-        try {
-          const host = new URL(item.url).hostname.replace('www.', '');
-          if (!sources.includes(host)) sources.push(host);
-        } catch {}
-      }
-    }
+  if (steps.length === 0) {
+    return [
+      'Keep your pet calm and comfortable',
+      'Do not give any medication without vet advice',
+      'Note the time symptoms started and any substances ingested',
+      'Contact your vet or emergency animal hospital'
+    ];
   }
-  return sources;
+
+  return steps;
 }
 
 // ─── Minimum Response Delay ─────────────────────────────────────────────────
@@ -200,32 +117,23 @@ function withMinDelay(startTime) {
   return remaining > 0 ? new Promise(r => setTimeout(r, remaining)) : Promise.resolve();
 }
 
-// ─── Poisoning Detection (bilingual) ────────────────────────────────────────
-
-function isPoisoning(symptom) {
-  return /\b(ate|eaten|ingested?|swallowed?|chewed?|licked?|drank|poison|toxic|έφαγε|κατάπιε|ήπιε|μασάει|γλείφει|δηλητήριο|τοξικό)\b/i.test(symptom);
-}
-
 // ─── POST /api/symptom-search ───────────────────────────────────────────────
 
 app.post('/api/symptom-search', async (req, res) => {
   const startTime = Date.now();
   try {
-    const { animal, symptom, details, animal_weight_kg, language } = req.body;
+    const { animal, symptom, details, animal_weight_kg } = req.body;
 
     if (!animal || !symptom) {
       return res.status(400).json({ error: 'animal and symptom are required' });
     }
 
-    const lang = detectLanguage(symptom, language);
     const coreQuery = `${animal} ${symptom}`.trim();
-    const poisoning = isPoisoning(symptom);
+    const isPoisoning = /\b(ate|eaten|ingested?|swallowed?|chewed?|licked?|drank|poison|toxic)\b/i.test(symptom);
 
-    console.log(`[symptom-search] Searching for: ${coreQuery} (poisoning: ${poisoning}, lang: ${lang})`);
+    console.log(`[symptom-search] Searching for: ${coreQuery} (poisoning: ${isPoisoning})`);
 
-    // Always search in English for best vet content quality
-    // The LLM will translate the results to the user's language
-    const q1 = poisoning
+    const q1 = isPoisoning
       ? `${coreQuery} toxic poison emergency treatment site:aspca.org OR site:petmd.com`
       : `${coreQuery} symptoms treatment when to call vet site:petmd.com`;
     const q2 = `${coreQuery} first aid advice site:bluecross.org.uk OR site:petmd.com`;
@@ -254,55 +162,48 @@ app.post('/api/symptom-search', async (req, res) => {
     console.log(`[symptom-search] Total content length: ${allContent.length}`);
 
     const severity = classifySeverity(allContent, symptom);
-    const sevText = SEVERITY_TEXT[lang][severity.level];
-    const firstAid = extractFirstAid(allContent, symptom) || FALLBACK_FIRST_AID[lang];
-    const sources = extractSources(searchResults);
-
-    // Build summary in the detected language
-    let summary;
-    if (lang === 'el') {
-      summary = `Σύμφωνα με αξιόπιστες κτηνιατρικές πηγές, ${symptom} σε ${animal}`;
-      if (animal_weight_kg) summary += ` βάρους ${animal_weight_kg} κιλών`;
-      summary += ` κατατάσσεται ως ${severity.level === 'EMERGENCY' ? 'ΕΚΤΑΚΤΗ ΑΝΑΓΚΗ' : severity.level === 'URGENT' ? 'ΕΠΕΙΓΟΝ' : 'ΠΑΡΑΚΟΛΟΥΘΗΣΗ'}. ${sevText.action}.`;
-    } else {
-      summary = `Based on trusted veterinary sources, ${symptom} in a ${animal}`;
-      if (animal_weight_kg) summary += ` weighing ${animal_weight_kg}kg`;
-      summary += ` is classified as ${severity.level}. ${sevText.action}.`;
+    const firstAid = extractFirstAid(allContent, symptom);
+    const sources = [];
+    for (const r of searchResults) {
+      for (const item of (r?.data || [])) {
+        if (item.url) {
+          try {
+            const host = new URL(item.url).hostname.replace('www.', '');
+            if (!sources.includes(host)) sources.push(host);
+          } catch {}
+        }
+      }
     }
+
+    let summary = `Based on trusted veterinary sources, ${symptom} in a ${animal}`;
+    if (animal_weight_kg) summary += ` weighing ${animal_weight_kg}kg`;
+    summary += ` is classified as ${severity.level}. ${severity.action}.`;
 
     await withMinDelay(startTime);
     console.log(`[symptom-search] Total time: ${Date.now() - startTime}ms`);
 
-    const response = {
+    res.json({
       severity: severity.level,
       severity_color: severity.color,
       summary,
       first_aid: firstAid,
       go_to_vet: severity.level !== 'MONITOR',
-      timeframe: sevText.timeframe,
+      timeframe: severity.timeframe,
       sources,
       raw_content: allContent.substring(0, 3000)
-    };
-
-    // Inject language instruction so the LLM knows to respond in the right language
-    const langInstr = languageInstruction(lang);
-    if (langInstr) {
-      response.instruction = langInstr;
-    }
-
-    res.json(response);
+    });
   } catch (err) {
     console.error('Symptom search error:', err);
-    const lang = detectLanguage(req.body?.symptom, req.body?.language);
     res.status(500).json({
-      error: lang === 'el' ? 'Αποτυχία αναζήτησης κτηνιατρικών πηγών' : 'Failed to search veterinary sources',
+      error: 'Failed to search veterinary sources',
       severity: 'URGENT',
-      summary: lang === 'el'
-        ? 'Δεν ήταν δυνατή η αναζήτηση. Για προληπτικούς λόγους, επικοινωνήστε με τον κτηνίατρό σας.'
-        : 'Could not search vet sources. As a precaution, please contact your vet.',
-      first_aid: FALLBACK_FIRST_AID[lang],
-      go_to_vet: true,
-      instruction: languageInstruction(lang)
+      summary: 'Could not search vet sources. As a precaution, please contact your vet.',
+      first_aid: [
+        'Keep your pet calm and comfortable',
+        'Do not give any medication without vet advice',
+        'Contact your vet or emergency animal hospital'
+      ],
+      go_to_vet: true
     });
   }
 });
@@ -331,34 +232,27 @@ function extractAddress(text) {
 
 app.post('/api/vet-finder', async (req, res) => {
   try {
-    const { city, country, animal_type, language } = req.body;
+    const { city, country, animal_type } = req.body;
 
     if (!city) {
       return res.status(400).json({ error: 'city is required' });
     }
 
-    const lang = detectLanguage(city, language);
+    const query = `emergency vet ${city} ${country || ''} open now 24 hours animal hospital`;
 
-    // Search in both English and Greek for Greek cities
-    const query = lang === 'el'
-      ? `κτηνίατρος έκτακτης ανάγκης ${city} ${country || 'Ελλάδα'} 24ωρο κτηνιατρείο`
-      : `emergency vet ${city} ${country || ''} open now 24 hours animal hospital`;
-
-    const results = await firecrawl.search(query, { limit: 5 });
+    const results = await firecrawl.search(query, {
+      limit: 5
+    });
 
     if (!results?.data?.length) {
-      const noResultMsg = lang === 'el'
-        ? `Αναζήτηση κτηνιάτρων έκτακτης ανάγκης στην περιοχή ${city}`
-        : `Search for emergency vets in ${city}`;
       return res.json({
         vets: [{
-          name: noResultMsg,
+          name: `Search for emergency vets in ${city}`,
           address: null,
           phone: null,
           open_24h: false,
           url: `https://www.google.com/search?q=emergency+vet+${encodeURIComponent(city)}+open+now`
-        }],
-        instruction: languageInstruction(lang)
+        }]
       });
     }
 
@@ -366,23 +260,15 @@ app.post('/api/vet-finder', async (req, res) => {
       const text = (item.description || '') + ' ' + (item.markdown || '');
       const phone = extractPhone(text);
       return {
-        name: item.title || (lang === 'el' ? 'Κτηνίατρος Έκτακτης Ανάγκης' : 'Emergency Vet'),
+        name: item.title || 'Emergency Vet',
         address: extractAddress(text),
         phone,
-        open_24h: /24.?h|24.?hour|always open|open now|24.?ωρ|ανοιχτ/i.test(text),
+        open_24h: /24.?h|24.?hour|always open|open now/i.test(text),
         url: item.url
       };
     });
 
-    // Build voice summary in the correct language
     const voiceSummary = vets.map((v, i) => {
-      if (lang === 'el') {
-        let s = `${i + 1}. ${v.name}`;
-        if (v.phone) s += `, τηλέφωνο: ${v.phone}`;
-        if (v.address) s += `, διεύθυνση: ${v.address}`;
-        if (v.open_24h) s += ` (ανοιχτό 24 ώρες)`;
-        return s;
-      }
       let s = `${i + 1}. ${v.name}`;
       if (v.phone) s += `, phone number: ${v.phone}`;
       if (v.address) s += `, address: ${v.address}`;
@@ -390,33 +276,22 @@ app.post('/api/vet-finder', async (req, res) => {
       return s;
     }).join('. ');
 
-    const baseInstruction = lang === 'el'
-      ? 'ΣΗΜΑΝΤΙΚΟ: Διάβασε το ΟΝΟΜΑ και τον ΑΡΙΘΜΟ ΤΗΛΕΦΩΝΟΥ δυνατά. ΜΗΝ διαβάζεις διευθύνσεις ιστοσελίδων. Αν δεν υπάρχει τηλέφωνο, πες το και πρότεινε αναζήτηση στο ίντερνετ.'
-      : 'IMPORTANT: Read the vet NAME and PHONE NUMBER out loud. Do NOT read website URLs. If no phone number is available, say so and suggest the user search online for the number.';
-
-    const langInstr = languageInstruction(lang);
-    const instruction = langInstr ? `${langInstr}\n\n${baseInstruction}` : baseInstruction;
-
     res.json({
       vets,
       voice_summary: voiceSummary,
-      instruction
+      instruction: 'IMPORTANT: Read the vet NAME and PHONE NUMBER out loud. Do NOT read website URLs. If no phone number is available, say so and suggest the user search online for the number.'
     });
   } catch (err) {
     console.error('Vet finder error:', err);
-    const lang = detectLanguage(req.body?.city, req.body?.language);
     res.status(500).json({
-      error: lang === 'el' ? 'Αποτυχία αναζήτησης κτηνιάτρων' : 'Failed to search for vets',
+      error: 'Failed to search for vets',
       vets: [{
-        name: lang === 'el'
-          ? `Αναζήτηση κτηνιάτρων στην περιοχή ${req.body.city || ''}`
-          : `Search for emergency vets in ${req.body.city || 'your area'}`,
+        name: `Search for emergency vets in ${req.body.city || 'your area'}`,
         address: null,
         phone: null,
         open_24h: false,
         url: `https://www.google.com/search?q=emergency+vet+${encodeURIComponent(req.body.city || '')}+open+now`
-      }],
-      instruction: languageInstruction(lang)
+      }]
     });
   }
 });
