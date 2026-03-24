@@ -38,8 +38,8 @@
 
     /* ── Floating Orb Button ── */
     #pawsos-orb-wrap {
-      width: 160px;
-      height: 160px;
+      width: 200px;
+      height: 200px;
       cursor: pointer;
       position: relative;
       margin-left: auto;
@@ -121,7 +121,7 @@
 
     .pawsos-floating #pawsos-panel {
       position: absolute;
-      bottom: 180px;
+      bottom: 220px;
       right: 0;
     }
     .pawsos-inline #pawsos-panel {
@@ -287,8 +287,11 @@
     #pawsos-severity.urgent { display: block; background: rgba(245,158,11,0.1); color: #f59e0b; border-bottom: 1px solid rgba(245,158,11,0.15); }
     #pawsos-severity.monitor { display: block; background: rgba(16,185,129,0.1); color: #10b981; border-bottom: 1px solid rgba(16,185,129,0.15); }
 
-    @media (max-width: 420px) {
-      #pawsos-panel { width: calc(100vw - 24px); right: -16px; }
+    @media (max-width: 480px) {
+      #pawsos-widget.pawsos-floating { bottom: 16px; right: 16px; }
+      .pawsos-floating #pawsos-panel { width: calc(100vw - 32px); right: -16px; bottom: 180px; }
+      #pawsos-orb-wrap { width: 120px; height: 120px; }
+      .pawsos-inline #pawsos-orb-wrap { width: 160px; height: 160px; }
     }
   `;
   document.head.appendChild(style);
@@ -317,7 +320,7 @@
     <div id="pawsos-orb-wrap">
       <div id="pawsos-orb-ring"></div>
       <div id="pawsos-badge"></div>
-      <canvas id="pawsos-orb-canvas" width="320" height="320"></canvas>
+      <canvas id="pawsos-orb-canvas" width="400" height="400"></canvas>
       <div id="pawsos-orb-label">Pawgent</div>
     </div>
   `;
@@ -362,16 +365,17 @@
     [-.30,-.08],[-.34,-.16],[-.36,-.24],[-.38,-.32],[-.36,-.38],[-.32,-.42],[-.28,-.44]
   ];
 
-  // Create particle system for a canvas
-  function createParticles(cx, cy, scale) {
-    return dp.map(([dx, dy]) => ({
+  // Create particle system — use every other point for more spacing
+  function createParticles(cx, cy, scale, sparse) {
+    const pts = sparse ? dp.filter((_, i) => i % 2 === 0) : dp;
+    return pts.map(([dx, dy]) => ({
       x: cx, y: cy,
       orbAngle: Math.random() * Math.PI * 2,
-      orbSpeed: 0.25 + Math.random() * 0.45,
+      orbSpeed: 0.15 + Math.random() * 0.35,
       orbPhase: Math.random() * Math.PI * 2,
-      dogX: cx + dx * scale, dogY: cy + dy * scale,
-      size: 1.8 + Math.random() * 2.2,
-      opacity: 0.35 + Math.random() * 0.55,
+      dogX: cx + dx * scale * 1.3, dogY: cy + dy * scale * 1.3,
+      size: 3.0 + Math.random() * 3.0,
+      opacity: 0.4 + Math.random() * 0.5,
       offset: Math.random() * Math.PI * 2
     }));
   }
@@ -423,13 +427,13 @@
   // ─── Two Canvases: Orb + Header ─────────────────────────
   const orbCanvas = document.getElementById('pawsos-orb-canvas');
   const orbCtx = orbCanvas.getContext('2d');
-  const orbW = 320, orbCX = 160, orbCY = 160;
-  const orbParticles = createParticles(orbCX, orbCY, 120);
+  const orbW = 400, orbCX = 200, orbCY = 200;
+  const orbParticles = createParticles(orbCX, orbCY, 140, true);
 
   const hdrCanvas = document.getElementById('pawsos-header-canvas');
   const hdrCtx = hdrCanvas.getContext('2d');
   const hdrW = 88, hdrCX = 44, hdrCY = 44;
-  const hdrParticles = createParticles(hdrCX, hdrCY, 32);
+  const hdrParticles = createParticles(hdrCX, hdrCY, 32, false);
 
   let morphProgress = 0;
 
@@ -437,7 +441,7 @@
     orbTime += 0.016;
     const targetMorph = orbMode === 'speaking' ? 1 : 0;
     morphProgress += (targetMorph - morphProgress) * 0.04;
-    const orbR = orbMode === 'listening' ? 56 : 40;
+    const orbR = orbMode === 'listening' ? 70 : 50;
     const hdrR = orbMode === 'listening' ? 16 : 12;
 
     drawParticles(orbCtx, orbW, orbW, orbCX, orbCY, orbR, orbParticles, morphProgress, [0,0,0]);
