@@ -213,6 +213,23 @@
       color: #334155;
       line-height: 1.4;
     }
+    #pawsos-end-call {
+      display: none;
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      background: rgba(239,68,68,0.12);
+      color: #ef4444;
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #pawsos-end-call:hover { background: rgba(239,68,68,0.2); }
+    #pawsos-end-call.visible { display: block; }
 
     /* ── Severity Bar ── */
     #pawsos-severity {
@@ -250,6 +267,7 @@
       <div id="pawsos-severity"></div>
       <div id="pawsos-transcript"></div>
       <div id="pawsos-footer">
+        <button id="pawsos-end-call">End Call</button>
         <div id="pawsos-footer-text">Not a replacement for professional veterinary care</div>
       </div>
     </div>
@@ -419,16 +437,31 @@
   }
 
   // ─── Panel Toggle ───────────────────────────────────────
-  // Close just minimizes — session stays alive
+  const endCallBtn = document.getElementById('pawsos-end-call');
+
+  // X button = minimize only, session stays alive
   document.getElementById('pawsos-close').onclick = () => {
     panel.classList.remove('open'); panelOpen = false;
   };
 
-  orbWrap.onclick = async () => {
-    // Always open the panel
-    if (!panelOpen) { panel.classList.add('open'); panelOpen = true; }
+  // End Call button = end session
+  endCallBtn.onclick = async () => {
+    if (conversation) { await conversation.endSession(); conversation = null; }
+    isActive = false; orbWrap.classList.remove('active'); orbMode = 'idle';
+    endCallBtn.classList.remove('visible');
+    setStatus('Call ended — tap orb to restart');
+    panel.classList.remove('open'); panelOpen = false;
+  };
 
-    // If session already running, do nothing (just re-opened panel)
+  // Orb click: toggle panel open/close, start session only once
+  orbWrap.onclick = async () => {
+    // If panel is open, just minimize it (don't end call)
+    if (panelOpen) { panel.classList.remove('open'); panelOpen = false; return; }
+
+    // Open the panel
+    panel.classList.add('open'); panelOpen = true;
+
+    // If session already running, just show the panel
     if (isActive) return;
 
     try {
@@ -440,11 +473,14 @@
         agentId: AGENT_ID,
         onConnect: () => {
           isActive = true; orbWrap.classList.add('active');
+          endCallBtn.classList.add('visible');
           orbMode = 'listening'; setStatus('Listening...', true);
         },
         onDisconnect: () => {
           isActive = false; orbWrap.classList.remove('active');
-          conversation = null; orbMode = 'idle'; setStatus('Session ended');
+          conversation = null; orbMode = 'idle';
+          endCallBtn.classList.remove('visible');
+          setStatus('Session ended');
         },
         onMessage: (m) => {
           if (m.source === 'ai') { addMsg('agent', m.message); parseMsg(m.message); }
@@ -458,6 +494,7 @@
           console.error('PawSOS:', e);
           setStatus('Error — tap to retry');
           isActive = false; orbMode = 'idle';
+          endCallBtn.classList.remove('visible');
         }
       });
     } catch (e) {
