@@ -32,6 +32,9 @@
       flex-direction: column;
       align-items: center;
     }
+    .pawsos-inline #pawsos-orb-wrap {
+      margin-left: 0;
+    }
 
     /* ── Floating Orb Button ── */
     #pawsos-orb-wrap {
