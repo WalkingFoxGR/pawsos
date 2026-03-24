@@ -42,12 +42,12 @@
       position: absolute;
       inset: -6px;
       border-radius: 50%;
-      border: 2px solid rgba(59,130,246,0.25);
+      border: 2px solid rgba(0,104,90,0.25);
       animation: pawsos-pulse 3s ease-out infinite;
       pointer-events: none;
     }
     #pawsos-orb-wrap.active #pawsos-orb-ring {
-      border-color: rgba(100,180,255,0.35);
+      border-color: rgba(0,134,110,0.35);
     }
 
     @keyframes pawsos-pulse {
@@ -63,7 +63,7 @@
       transform: translateX(-50%);
       font-size: 0.6rem;
       font-weight: 600;
-      color: rgba(59,130,246,0.7);
+      color: rgba(0,104,90,0.7);
       letter-spacing: 0.5px;
       white-space: nowrap;
       pointer-events: none;
@@ -95,10 +95,10 @@
       width: 380px;
       max-height: 540px;
       background: #080d16;
-      border: 1px solid rgba(59,130,246,0.15);
+      border: 1px solid rgba(0,104,90,0.15);
       border-radius: 24px;
       overflow: hidden;
-      box-shadow: 0 16px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.08);
+      box-shadow: 0 16px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,104,90,0.08);
       flex-direction: column;
       animation: pawsos-slideUp 0.35s cubic-bezier(0.16,1,0.3,1);
     }
@@ -115,8 +115,8 @@
       display: flex;
       align-items: center;
       gap: 14px;
-      border-bottom: 1px solid rgba(59,130,246,0.08);
-      background: linear-gradient(180deg, rgba(59,130,246,0.04) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(0,104,90,0.08);
+      background: linear-gradient(180deg, rgba(0,104,90,0.04) 0%, transparent 100%);
     }
 
     #pawsos-header-canvas {
@@ -142,7 +142,7 @@
       margin-top: 2px;
       transition: color 0.3s;
     }
-    #pawsos-header-status.active { color: #3b82f6; }
+    #pawsos-header-status.active { color: #00685A; }
 
     #pawsos-close {
       background: none;
@@ -183,14 +183,14 @@
     .pawsos-msg.agent {
       align-self: flex-start;
       background: #0f1823;
-      border: 1px solid rgba(59,130,246,0.1);
+      border: 1px solid rgba(0,104,90,0.1);
       color: #e2e8f0;
       border-bottom-left-radius: 4px;
     }
     .pawsos-msg.user {
       align-self: flex-end;
-      background: rgba(59,130,246,0.1);
-      border: 1px solid rgba(59,130,246,0.15);
+      background: rgba(0,104,90,0.1);
+      border: 1px solid rgba(0,104,90,0.15);
       color: #e2e8f0;
       border-bottom-right-radius: 4px;
     }
@@ -204,7 +204,7 @@
     #pawsos-footer {
       padding: 10px 16px 14px;
       text-align: center;
-      border-top: 1px solid rgba(59,130,246,0.06);
+      border-top: 1px solid rgba(0,104,90,0.06);
     }
     #pawsos-footer-text {
       font-size: 0.58rem;
@@ -313,7 +313,7 @@
     // Glow
     const ga = orbMode === 'speaking' ? 0.14 : 0.06;
     const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.4);
-    gr.addColorStop(0, `rgba(59,130,246,${ga})`);
+    gr.addColorStop(0, `rgba(0,104,90,${ga})`);
     gr.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = gr;
     ctx.beginPath(); ctx.arc(cx, cy, w * 0.4, 0, Math.PI * 2); ctx.fill();
@@ -338,9 +338,9 @@
         ? 0.75 + 0.25 * Math.sin(orbTime * 2.5 + p.offset)
         : 0.4 + 0.35 * Math.sin(orbTime + p.offset));
       const sz = p.size * (1 + morph * 0.3);
-      const r = 100 + morph * 40 | 0;
-      const g = 170 + morph * 20 | 0;
-      const b = 245 - morph * 10 | 0;
+      const r = 0 + morph * 30 | 0;
+      const g = 104 + morph * 30 | 0;
+      const b = 90 + morph * 20 | 0;
       ctx.beginPath(); ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(${r},${g},${b},${al})`;
       ctx.fill();
