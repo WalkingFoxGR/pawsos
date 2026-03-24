@@ -138,9 +138,10 @@ app.post('/api/symptom-search', async (req, res) => {
       : `${coreQuery} symptoms treatment when to call vet site:petmd.com`;
     const q2 = `${coreQuery} first aid advice site:bluecross.org.uk OR site:petmd.com`;
 
+    // Step 1: Search for relevant pages
     const searchResults = await Promise.allSettled([
-      firecrawl.search(q1, { limit: 3, scrapeOptions: { formats: ['markdown'], onlyMainContent: true } }),
-      firecrawl.search(q2, { limit: 2, scrapeOptions: { formats: ['markdown'], onlyMainContent: true } })
+      firecrawl.search(q1, { limit: 3 }),
+      firecrawl.search(q2, { limit: 2 })
     ]).then(results => {
       return results.map((r, i) => {
         if (r.status === 'fulfilled') {
@@ -152,12 +153,35 @@ app.post('/api/symptom-search', async (req, res) => {
       });
     });
 
-    const allContent = searchResults
+    // Step 2: Scrape the top 2 URLs for full article content
+    const allUrls = searchResults
       .flatMap(r => r?.data || [])
-      .map(item => item.markdown || item.content || '')
+      .filter(item => item.url)
+      .map(item => item.url);
+    const uniqueUrls = [...new Set(allUrls)].slice(0, 2);
+
+    console.log(`[symptom-search] Scraping ${uniqueUrls.length} URLs:`, uniqueUrls);
+
+    const scrapeResults = await Promise.allSettled(
+      uniqueUrls.map(url =>
+        firecrawl.scrapeUrl(url, { formats: ['markdown'], onlyMainContent: true, timeout: 6000 })
+      )
+    );
+
+    const scrapedContent = scrapeResults
+      .filter(r => r.status === 'fulfilled' && r.value?.markdown)
+      .map(r => r.value.markdown)
+      .join('\n\n---\n\n');
+
+    // Combine search snippets + scraped full content
+    const searchSnippets = searchResults
+      .flatMap(r => r?.data || [])
+      .map(item => item.markdown || item.description || '')
       .filter(Boolean)
-      .join('\n\n---\n\n')
-      .substring(0, 8000);
+      .join('\n\n');
+
+    const allContent = (scrapedContent || searchSnippets).substring(0, 12000);
+    console.log(`[symptom-search] Content: ${scrapedContent.length} scraped + ${searchSnippets.length} snippets`);
 
     console.log(`[symptom-search] Total content length: ${allContent.length}`);
 
@@ -225,9 +249,19 @@ function extractPhone(text) {
 }
 
 function extractAddress(text) {
-  const addressRegex = /\d+\s+[A-Z][a-z]+(?:\s+[A-Za-z]+)*(?:\s+(?:Street|St|Road|Rd|Avenue|Ave|Lane|Ln|Drive|Dr|Way|Place|Pl|Boulevard|Blvd|Close|Crescent|Terrace))/i;
-  const match = text.match(addressRegex);
-  return match ? match[0] : null;
+  const patterns = [
+    // English addresses
+    /\d+\s+[A-Z][a-z]+(?:\s+[A-Za-z]+)*(?:\s+(?:Street|St|Road|Rd|Avenue|Ave|Lane|Ln|Drive|Dr|Way|Place|Pl|Boulevard|Blvd|Close|Crescent|Terrace))/i,
+    // Greek addresses (Οδός Name Number or Name Number, City)
+    /[Α-Ωα-ω]+(?:\s+[Α-Ωα-ω]+)*\s+\d{1,4}(?:\s*,\s*[Α-Ωα-ω\s]+)?/,
+    // Generic: street name + number + postal code
+    /[A-Za-zΑ-Ωα-ω\s]{5,30}\s+\d{1,4}(?:\s*,\s*\d{3,5})?/
+  ];
+  for (const regex of patterns) {
+    const match = text.match(regex);
+    if (match) return match[0].trim();
+  }
+  return null;
 }
 
 app.post('/api/vet-finder', async (req, res) => {
@@ -242,9 +276,8 @@ app.post('/api/vet-finder', async (req, res) => {
     const location = country || 'Greece';
     const query = `emergency veterinary clinic ${city} ${location} open now 24 hour animal hospital phone number`;
 
-    const results = await firecrawl.search(query, {
-      limit: 5
-    });
+    // Step 1: Search for vet listings
+    const results = await firecrawl.search(query, { limit: 5 });
 
     if (!results?.data?.length) {
       return res.json({
@@ -253,13 +286,36 @@ app.post('/api/vet-finder', async (req, res) => {
           address: null,
           phone: null,
           open_24h: false,
-          url: `https://www.google.com/search?q=emergency+vet+${encodeURIComponent(city)}+open+now`
+          url: `https://www.google.com/search?q=emergency+vet+${encodeURIComponent(city)}+${encodeURIComponent(location)}+open+now`
         }]
       });
     }
 
+    // Step 2: Scrape top result for richer data (phone, address)
+    const topUrls = results.data
+      .filter(item => item.url && !item.url.includes('facebook.com'))
+      .slice(0, 2)
+      .map(item => item.url);
+
+    console.log(`[vet-finder] Scraping ${topUrls.length} URLs:`, topUrls);
+
+    const scrapeResults = await Promise.allSettled(
+      topUrls.map(url =>
+        firecrawl.scrapeUrl(url, { formats: ['markdown'], onlyMainContent: true, timeout: 6000 })
+      )
+    );
+
+    // Build scraped content map by URL
+    const scrapedMap = {};
+    topUrls.forEach((url, i) => {
+      if (scrapeResults[i]?.status === 'fulfilled' && scrapeResults[i].value?.markdown) {
+        scrapedMap[url] = scrapeResults[i].value.markdown;
+      }
+    });
+
     const vets = results.data.slice(0, 3).map(item => {
-      const text = (item.description || '') + ' ' + (item.markdown || '');
+      const scraped = scrapedMap[item.url] || '';
+      const text = (item.description || '') + ' ' + (item.markdown || '') + ' ' + scraped;
       const phone = extractPhone(text);
       return {
         name: item.title || 'Emergency Vet',
