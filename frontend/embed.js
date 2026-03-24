@@ -346,13 +346,14 @@
   }
 
   // Draw particles on any canvas
-  function drawParticles(ctx, w, h, cx, cy, orbR, particles, morph) {
+  function drawParticles(ctx, w, h, cx, cy, orbR, particles, morph, color) {
     ctx.clearRect(0, 0, w, h);
+    const r = color[0], g = color[1], b = color[2];
 
     // Glow
     const ga = orbMode === 'speaking' ? 0.14 : 0.06;
     const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.4);
-    gr.addColorStop(0, `rgba(255,255,255,${ga})`);
+    gr.addColorStop(0, `rgba(${r},${g},${b},${ga})`);
     gr.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = gr;
     ctx.beginPath(); ctx.arc(cx, cy, w * 0.4, 0, Math.PI * 2); ctx.fill();
@@ -377,9 +378,6 @@
         ? 0.75 + 0.25 * Math.sin(orbTime * 2.5 + p.offset)
         : 0.4 + 0.35 * Math.sin(orbTime + p.offset));
       const sz = p.size * (1 + morph * 0.3);
-      const r = 255;
-      const g = 255;
-      const b = 255;
       ctx.beginPath(); ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(${r},${g},${b},${al})`;
       ctx.fill();
@@ -411,8 +409,8 @@
     const orbR = orbMode === 'listening' ? 28 : 20;
     const hdrR = orbMode === 'listening' ? 16 : 12;
 
-    drawParticles(orbCtx, orbW, orbW, orbCX, orbCY, orbR, orbParticles, morphProgress);
-    drawParticles(hdrCtx, hdrW, hdrW, hdrCX, hdrCY, hdrR, hdrParticles, morphProgress);
+    drawParticles(orbCtx, orbW, orbW, orbCX, orbCY, orbR, orbParticles, morphProgress, [0,0,0]);
+    drawParticles(hdrCtx, hdrW, hdrW, hdrCX, hdrCY, hdrR, hdrParticles, morphProgress, [255,255,255]);
 
     requestAnimationFrame(animate);
   }
@@ -521,11 +519,10 @@
   // Start New Conversation button
   startCallBtn.onclick = () => startSession();
 
-  // Orb click: toggle panel, start session on first open
-  orbWrap.onclick = async () => {
+  // Orb click: toggle panel only, never auto-start
+  orbWrap.onclick = () => {
     if (panelOpen) { panel.classList.remove('open'); panelOpen = false; return; }
     panel.classList.add('open'); panelOpen = true;
-    if (isActive) return;
-    startSession();
+    if (!isActive) startCallBtn.classList.add('visible');
   };
 })();
