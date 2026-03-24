@@ -29,6 +29,8 @@
       position: relative;
       margin-left: auto;
       transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+      background: #00685A;
+      border-radius: 50%;
     }
     #pawsos-orb-wrap:hover { transform: scale(1.06); }
     #pawsos-orb-wrap:active { transform: scale(0.96); }
