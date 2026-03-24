@@ -76,8 +76,8 @@
     }
 
     .orb-container {
-      width: 180px;
-      height: 180px;
+      width: 280px;
+      height: 280px;
       margin-bottom: 16px;
       position: relative;
     }
@@ -85,6 +85,8 @@
     .orb-container canvas {
       width: 100%;
       height: 100%;
+      border-radius: 50%;
+      background: #00685A;
     }
 
     .status-text {
@@ -461,7 +463,7 @@
     <!-- Voice Visualizer -->
     <div class="voice-section">
       <div class="orb-container">
-        <canvas id="orbCanvas" width="360" height="360"></canvas>
+        <canvas id="orbCanvas" width="560" height="560"></canvas>
       </div>
       <span class="status-text" id="statusText">Tap the mic to start</span>
     </div>
@@ -665,14 +667,14 @@
       // Glow — warmer when speaking (dog form), pulse when thinking
       let glowR, glowG, glowB, glowAlpha;
       if (orbMode === 'speaking') {
-        glowR = 0; glowG = 104; glowB = 90; glowAlpha = 0.18;
+        glowR = 255; glowG = 255; glowB = 255; glowAlpha = 0.18;
       } else if (orbMode === 'thinking') {
         const pulse = 0.06 + Math.sin(orbTime * 3) * 0.04;
-        glowR = 0; glowG = 90; glowB = 80; glowAlpha = pulse;
+        glowR = 255; glowG = 255; glowB = 255; glowAlpha = pulse;
       } else if (orbMode === 'listening') {
-        glowR = 0; glowG = 120; glowB = 100; glowAlpha = 0.14;
+        glowR = 255; glowG = 255; glowB = 255; glowAlpha = 0.14;
       } else {
-        glowR = 0; glowG = 104; glowB = 90; glowAlpha = 0.08;
+        glowR = 255; glowG = 255; glowB = 255; glowAlpha = 0.08;
       }
 
       const glowSize = orbMode === 'listening' ? 150 : orbMode === 'thinking' ? 90 : 130;
@@ -761,23 +763,9 @@
           sz = p.size * (1 + morphProgress * 0.3);
         }
 
-        // Color per mode
+        // Color per mode — white particles on teal background
         let cr, cg, cb;
-        if (orbMode === 'speaking') {
-          cr = 0 + morphProgress * 30;
-          cg = 104 + morphProgress * 30;
-          cb = 90 + morphProgress * 20;
-        } else if (orbMode === 'thinking') {
-          cr = 0 + Math.sin(orbTime * 2 + p.offset) * 20;
-          cg = 90;
-          cb = 80;
-        } else if (orbMode === 'listening') {
-          cr = 0;
-          cg = 120;
-          cb = 100;
-        } else {
-          cr = 0; cg = 104; cb = 90;
-        }
+        cr = 255; cg = 255; cb = 255;
 
         // Draw particle
         ctx.beginPath();

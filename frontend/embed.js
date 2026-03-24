@@ -36,6 +36,8 @@
     #pawsos-orb-canvas {
       width: 100%;
       height: 100%;
+      border-radius: 50%;
+      background: #00685A;
     }
 
     #pawsos-orb-ring {
@@ -313,7 +315,7 @@
     // Glow
     const ga = orbMode === 'speaking' ? 0.14 : 0.06;
     const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.4);
-    gr.addColorStop(0, `rgba(0,104,90,${ga})`);
+    gr.addColorStop(0, `rgba(255,255,255,${ga})`);
     gr.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = gr;
     ctx.beginPath(); ctx.arc(cx, cy, w * 0.4, 0, Math.PI * 2); ctx.fill();
@@ -338,9 +340,9 @@
         ? 0.75 + 0.25 * Math.sin(orbTime * 2.5 + p.offset)
         : 0.4 + 0.35 * Math.sin(orbTime + p.offset));
       const sz = p.size * (1 + morph * 0.3);
-      const r = 0 + morph * 30 | 0;
-      const g = 104 + morph * 30 | 0;
-      const b = 90 + morph * 20 | 0;
+      const r = 255;
+      const g = 255;
+      const b = 255;
       ctx.beginPath(); ctx.arc(p.x, p.y, sz, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(${r},${g},${b},${al})`;
       ctx.fill();
@@ -417,8 +419,10 @@
   }
 
   // ─── Panel Toggle ───────────────────────────────────────
-  document.getElementById('pawsos-close').onclick = () => {
+  document.getElementById('pawsos-close').onclick = async () => {
     panel.classList.remove('open'); panelOpen = false;
+    if (conversation) { await conversation.endSession(); conversation = null; }
+    isActive = false; orbWrap.classList.remove('active'); orbMode = 'idle';
   };
 
   orbWrap.onclick = async () => {
