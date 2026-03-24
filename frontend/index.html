@@ -665,14 +665,14 @@
       // Glow — warmer when speaking (dog form), pulse when thinking
       let glowR, glowG, glowB, glowAlpha;
       if (orbMode === 'speaking') {
-        glowR = 80; glowG = 140; glowB = 246; glowAlpha = 0.18;
+        glowR = 0; glowG = 104; glowB = 90; glowAlpha = 0.18;
       } else if (orbMode === 'thinking') {
         const pulse = 0.06 + Math.sin(orbTime * 3) * 0.04;
-        glowR = 120; glowG = 100; glowB = 255; glowAlpha = pulse;
+        glowR = 0; glowG = 90; glowB = 80; glowAlpha = pulse;
       } else if (orbMode === 'listening') {
-        glowR = 59; glowG = 160; glowB = 246; glowAlpha = 0.14;
+        glowR = 0; glowG = 120; glowB = 100; glowAlpha = 0.14;
       } else {
-        glowR = 59; glowG = 130; glowB = 246; glowAlpha = 0.08;
+        glowR = 0; glowG = 104; glowB = 90; glowAlpha = 0.08;
       }
 
       const glowSize = orbMode === 'listening' ? 150 : orbMode === 'thinking' ? 90 : 130;
@@ -764,19 +764,19 @@
         // Color per mode
         let cr, cg, cb;
         if (orbMode === 'speaking') {
-          cr = 100 + morphProgress * 40;
-          cg = 170 + morphProgress * 20;
-          cb = 245 - morphProgress * 10;
+          cr = 0 + morphProgress * 30;
+          cg = 104 + morphProgress * 30;
+          cb = 90 + morphProgress * 20;
         } else if (orbMode === 'thinking') {
-          cr = 130 + Math.sin(orbTime * 2 + p.offset) * 20;
-          cg = 110;
-          cb = 255;
+          cr = 0 + Math.sin(orbTime * 2 + p.offset) * 20;
+          cg = 90;
+          cb = 80;
         } else if (orbMode === 'listening') {
-          cr = 80;
-          cg = 170;
-          cb = 250;
+          cr = 0;
+          cg = 120;
+          cb = 100;
         } else {
-          cr = 100; cg = 170; cb = 245;
+          cr = 0; cg = 104; cb = 90;
         }
 
         // Draw particle
