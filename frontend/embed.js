@@ -419,22 +419,17 @@
   }
 
   // ─── Panel Toggle ───────────────────────────────────────
-  document.getElementById('pawsos-close').onclick = async () => {
+  // Close just minimizes — session stays alive
+  document.getElementById('pawsos-close').onclick = () => {
     panel.classList.remove('open'); panelOpen = false;
-    if (conversation) { await conversation.endSession(); conversation = null; }
-    isActive = false; orbWrap.classList.remove('active'); orbMode = 'idle';
   };
 
   orbWrap.onclick = async () => {
+    // Always open the panel
     if (!panelOpen) { panel.classList.add('open'); panelOpen = true; }
 
-    if (isActive) {
-      if (conversation) await conversation.endSession();
-      conversation = null; isActive = false;
-      orbWrap.classList.remove('active'); orbMode = 'idle';
-      setStatus('Tap the orb to start');
-      return;
-    }
+    // If session already running, do nothing (just re-opened panel)
+    if (isActive) return;
 
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -449,7 +444,7 @@
         },
         onDisconnect: () => {
           isActive = false; orbWrap.classList.remove('active');
-          orbMode = 'idle'; setStatus('Session ended');
+          conversation = null; orbMode = 'idle'; setStatus('Session ended');
         },
         onMessage: (m) => {
           if (m.source === 'ai') { addMsg('agent', m.message); parseMsg(m.message); }
