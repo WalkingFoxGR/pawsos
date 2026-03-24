@@ -29,7 +29,7 @@
       position: relative;
       margin-left: auto;
       transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
-      background: #00685A;
+      background: rgba(0,104,90,0.35);
       border-radius: 50%;
     }
     #pawsos-orb-wrap:hover { transform: scale(1.06); }
@@ -39,7 +39,6 @@
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      background: #00685A;
     }
 
     #pawsos-orb-ring {
@@ -232,6 +231,23 @@
     }
     #pawsos-end-call:hover { background: rgba(239,68,68,0.2); }
     #pawsos-end-call.visible { display: block; }
+    #pawsos-start-call {
+      display: none;
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      background: rgba(0,104,90,0.15);
+      color: #00685A;
+      border: 1px solid rgba(0,104,90,0.25);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #pawsos-start-call:hover { background: rgba(0,104,90,0.25); }
+    #pawsos-start-call.visible { display: block; }
 
     /* ── Severity Bar ── */
     #pawsos-severity {
@@ -270,6 +286,7 @@
       <div id="pawsos-transcript"></div>
       <div id="pawsos-footer">
         <button id="pawsos-end-call">End Call</button>
+        <button id="pawsos-start-call">Start New Conversation</button>
         <div id="pawsos-footer-text">Not a replacement for professional veterinary care</div>
       </div>
     </div>
@@ -440,35 +457,13 @@
 
   // ─── Panel Toggle ───────────────────────────────────────
   const endCallBtn = document.getElementById('pawsos-end-call');
+  const startCallBtn = document.getElementById('pawsos-start-call');
 
-  // X button = minimize only, session stays alive
-  document.getElementById('pawsos-close').onclick = () => {
-    panel.classList.remove('open'); panelOpen = false;
-  };
-
-  // End Call button = end session
-  endCallBtn.onclick = async () => {
-    if (conversation) { await conversation.endSession(); conversation = null; }
-    isActive = false; orbWrap.classList.remove('active'); orbMode = 'idle';
-    endCallBtn.classList.remove('visible');
-    setStatus('Call ended — tap orb to restart');
-    panel.classList.remove('open'); panelOpen = false;
-  };
-
-  // Orb click: toggle panel open/close, start session only once
-  orbWrap.onclick = async () => {
-    // If panel is open, just minimize it (don't end call)
-    if (panelOpen) { panel.classList.remove('open'); panelOpen = false; return; }
-
-    // Open the panel
-    panel.classList.add('open'); panelOpen = true;
-
-    // If session already running, just show the panel
-    if (isActive) return;
-
+  async function startSession() {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
       setStatus('Connecting...', true);
+      startCallBtn.classList.remove('visible');
 
       const { Conversation } = await import('https://cdn.jsdelivr.net/npm/@11labs/client@0.2.0/+esm');
       conversation = await Conversation.startSession({
@@ -476,13 +471,15 @@
         onConnect: () => {
           isActive = true; orbWrap.classList.add('active');
           endCallBtn.classList.add('visible');
+          startCallBtn.classList.remove('visible');
           orbMode = 'listening'; setStatus('Listening...', true);
         },
         onDisconnect: () => {
           isActive = false; orbWrap.classList.remove('active');
           conversation = null; orbMode = 'idle';
           endCallBtn.classList.remove('visible');
-          setStatus('Session ended');
+          startCallBtn.classList.add('visible');
+          setStatus('Call ended');
         },
         onMessage: (m) => {
           if (m.source === 'ai') { addMsg('agent', m.message); parseMsg(m.message); }
@@ -497,11 +494,38 @@
           setStatus('Error — tap to retry');
           isActive = false; orbMode = 'idle';
           endCallBtn.classList.remove('visible');
+          startCallBtn.classList.add('visible');
         }
       });
     } catch (e) {
       console.error('PawSOS:', e);
       setStatus(e.name === 'NotAllowedError' ? 'Mic access denied' : 'Error — tap to retry');
+      startCallBtn.classList.add('visible');
     }
+  }
+
+  // X button = minimize only, session stays alive
+  document.getElementById('pawsos-close').onclick = () => {
+    panel.classList.remove('open'); panelOpen = false;
+  };
+
+  // End Call = end session, keep panel open, show Start button
+  endCallBtn.onclick = async () => {
+    if (conversation) { await conversation.endSession(); conversation = null; }
+    isActive = false; orbWrap.classList.remove('active'); orbMode = 'idle';
+    endCallBtn.classList.remove('visible');
+    startCallBtn.classList.add('visible');
+    setStatus('Call ended');
+  };
+
+  // Start New Conversation button
+  startCallBtn.onclick = () => startSession();
+
+  // Orb click: toggle panel, start session on first open
+  orbWrap.onclick = async () => {
+    if (panelOpen) { panel.classList.remove('open'); panelOpen = false; return; }
+    panel.classList.add('open'); panelOpen = true;
+    if (isActive) return;
+    startSession();
   };
 })();
