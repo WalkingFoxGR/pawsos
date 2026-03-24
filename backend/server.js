@@ -297,6 +297,15 @@ app.post('/api/vet-finder', async (req, res) => {
   }
 });
 
+// ─── Serve embed.js ─────────────────────────────────────────────────────────
+
+const path = require('path');
+app.get('/embed.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'embed.js'));
+});
+
 // ─── Health Check ───────────────────────────────────────────────────────────
 
 app.get('/health', (req, res) => {
