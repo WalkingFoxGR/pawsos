@@ -371,5 +371,5 @@ app.get('/health', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`PawSOS backend running on port ${PORT}`);
+  console.log(`Pawgent backend running on port ${PORT}`);
 });

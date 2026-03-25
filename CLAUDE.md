@@ -1,4 +1,4 @@
-# PawSOS — Pet Emergency Voice Agent
+# Pawgent — Pet Emergency Voice Agent
 
 ## What This Is
 A voice-first emergency assistant for pet owners. Combines ElevenLabs ElevenAgents (voice AI) with Firecrawl Search API (real-time vet data) to triage pet emergencies, give first-aid guidance, and locate nearby emergency vets. Built for ElevenHacks #1 (deadline: 26 March 2026, 17:00 GMT).

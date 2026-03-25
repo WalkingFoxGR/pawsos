@@ -1,7 +1,7 @@
 # Project Context
 
 ## What This Project Does
-PawSOS is a voice-first pet emergency assistant. Pet owners speak to the agent, describe their pet's problem, and get an immediate triage assessment (EMERGENCY/URGENT/MONITOR) from trusted vet sources, first-aid guidance, and emergency vet locator. Built for ElevenHacks #1 hackathon.
+Pawgent is a voice-first pet emergency assistant. Pet owners speak to the agent, describe their pet's problem, and get an immediate triage assessment (EMERGENCY/URGENT/MONITOR) from trusted vet sources, first-aid guidance, and emergency vet locator. Built for ElevenHacks #1 hackathon.
 
 ## Key Technologies
 - **Runtime:** Node.js 18+

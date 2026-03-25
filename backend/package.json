@@ -1,7 +1,7 @@
 {
-  "name": "pawsos-backend",
+  "name": "pawgent-backend",
   "version": "1.0.0",
-  "description": "PawSOS — Pet Emergency Voice Agent Backend",
+  "description": "Pawgent — Pet Emergency Voice Agent Backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
